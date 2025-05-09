@@ -1,11 +1,21 @@
 spring:
   application:
-    name: CourseCrafter
+    name: CourseCrafter\
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/rag
+    username: ai_user
+    password: secret
+    driver-class-name: org.postgresql.Driver
+
   ai:
     openai:
       api-key: ${OPENAI_API_KEY}
+      embedding:
+        options:
+          # Default model: text-embedding-ada-002
+          model: text-embedding-3-small
+
     vectorstore:
       pgvector:
-        url: jdbc:postgresql://localhost:5432/courseai
-        username: courseai
-        password: 33333333
+        initialize-schema: true
