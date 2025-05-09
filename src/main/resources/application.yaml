@@ -1,0 +1,11 @@
+spring:
+  application:
+    name: CourseCrafter
+  ai:
+    openai:
+      api-key: ${OPENAI_API_KEY}
+    vectorstore:
+      pgvector:
+        url: jdbc:postgresql://localhost:5432/courseai
+        username: courseai
+        password: 33333333
