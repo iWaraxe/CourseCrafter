@@ -1,8 +1,8 @@
 // src/main/java/com/coherentsolutions/coursecrafter/service/ai/AnalyzerService.java
 package com.coherentsolutions.coursecrafter.service.ai;
 
-import com.coherentsolutions.coursecrafter.dto.SuggestionDto;
-import com.coherentsolutions.coursecrafter.model.CourseContent;
+import com.coherentsolutions.coursecrafter.dto.ProposalDto;
+import com.coherentsolutions.coursecrafter.dto.ProposalList;
 import com.coherentsolutions.coursecrafter.repo.CourseContentRepository;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -20,7 +20,7 @@ import java.util.stream.Collectors;
  * This version uses a plain JPA query (no vector-store RAG yet). It builds a
  * compact textual context from every slide in the DB, feeds it—along with the
  * newly‑uploaded material—to ChatGPT, and expects back a JSON array that
- * conforms to {@link SuggestionDto}.
+ * conforms to {@link ProposalDto}.
  */
 @Service
 @RequiredArgsConstructor
@@ -34,7 +34,7 @@ public class AnalyzerService {
      * @param newMarkdown raw or pre‑normalised Markdown supplied by the user
      * @return list of suggested content operations
      */
-    public List<SuggestionDto> suggest(String newMarkdown) {
+    public List<ProposalDto> propose(String newMarkdown) {
 
         // 1) Build a compact context from all existing slides
         String dbContext = repo.findAll().stream()
@@ -44,7 +44,7 @@ public class AnalyzerService {
                 .collect(Collectors.joining("\n\n"));
 
         // 2) Ask the model to produce change commands
-        String json = chatClient.prompt()
+        var proposalList = chatClient.prompt()
                 .system("""
                         You are CourseCrafter AI. Compare NEW course material
                         with the EXISTING corpus and output a JSON array of
@@ -68,12 +68,8 @@ public class AnalyzerService {
                         %s
                         """.formatted(newMarkdown, dbContext))
                 .call()
-                .content();
+                .entity(ProposalList.class);
 
-        try {
-            return mapper.readValue(json, new TypeReference<>() {});
-        } catch (Exception ex) {
-            throw new IllegalStateException("Model returned invalid JSON:\n" + json, ex);
-        }
+        return proposalList.proposals();
     }
 }

@@ -22,6 +22,27 @@ public class GitCliService {
         run("git", "-C", repoRoot, "push", "-f", remote, branch);
     }
 
+    /**
+     * Opens a GitHub Pull Request for the given branch.
+     * Requires the GitHub CLI (`gh`) to be installed and authenticated.
+     *
+     * @param branch feature branch that was already pushed
+     * @param title  PR title
+     * @param body   PR body/description
+     */
+    public void createPr(String branch, String title, String body) throws IOException, InterruptedException {
+        // We have to run inside the repo root; easiest is to wrap the command in `sh -c "cd … && gh …"`
+        String cmd = String.format(
+                "cd %s && gh pr create --title \"%s\" --body \"%s\" --base %s --head %s",
+                repoRoot,
+                title.replace("\"", "\\\""),
+                body.replace("\"", "\\\""),
+                defaultBranch,
+                branch
+        );
+        run("sh", "-c", cmd);
+    }
+
     private void run(String... cmd) throws IOException, InterruptedException {
         ProcessBuilder pb = new ProcessBuilder(cmd);
         pb.inheritIO();

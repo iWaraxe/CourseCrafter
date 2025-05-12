@@ -2,7 +2,7 @@
 package com.coherentsolutions.coursecrafter.dto;
 
 // ------------ Analyzer -> Updater suggestion ------------
-public record SuggestionDto(
+public record ProposalDto(
         Long lectureId,
         Long slideId,
         Action action,   // ADD, UPDATE, DELETE

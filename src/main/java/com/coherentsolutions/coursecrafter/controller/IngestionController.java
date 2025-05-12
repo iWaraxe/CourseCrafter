@@ -3,7 +3,9 @@ package com.coherentsolutions.coursecrafter.controller;
 
 import com.coherentsolutions.coursecrafter.dto.IngestionRequest;
 import com.coherentsolutions.coursecrafter.model.CourseContent;
+import com.coherentsolutions.coursecrafter.repo.CourseContentRepository;
 import com.coherentsolutions.coursecrafter.service.CourseContentService;
+import com.coherentsolutions.coursecrafter.service.ingest.TextIngestionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -11,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -19,6 +22,7 @@ import java.util.UUID;
 public class IngestionController {
 
     private final CourseContentService service;
+    private final TextIngestionService textIngestionService;
 
     @PostMapping("/text")
     public CourseContent ingestText(@RequestBody IngestionRequest dto) throws IOException, InterruptedException {
@@ -30,5 +34,12 @@ public class IngestionController {
                 .build();
 
         return service.saveAndCommit(cc, "Ingest raw text: " + cc.getPath());
+    }
+
+    @PostMapping("/review")
+    public List<CourseContent> review(@RequestBody String rawMarkdown)
+            throws IOException, InterruptedException {
+
+        return textIngestionService.reviewAndApply(rawMarkdown);
     }
 }

@@ -1,16 +1,15 @@
-// src/main/java/com/coherentsolutions/coursecrafter/service/ingest/TextIngestionService.java
 package com.coherentsolutions.coursecrafter.service.ingest;
 
-import com.coherentsolutions.coursecrafter.dto.SuggestionDto;
+import com.coherentsolutions.coursecrafter.dto.ProposalDto;
 import com.coherentsolutions.coursecrafter.model.CourseContent;
 import com.coherentsolutions.coursecrafter.service.ai.AnalyzerService;
 import com.coherentsolutions.coursecrafter.service.ai.SummarizationService;
 import com.coherentsolutions.coursecrafter.service.ai.UpdaterService;
+import com.coherentsolutions.coursecrafter.service.git.GitCliService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
-import java.util.Collections;
 import java.util.List;
 
 /**
@@ -31,6 +30,7 @@ public class TextIngestionService {
     private final SummarizationService summarizationService;
     private final AnalyzerService analyzerService;
     private final UpdaterService updaterService;
+    private final GitCliService gitCli;
 
     /**
      * Executes the happy‑path flow for a raw Markdown upload.
@@ -47,13 +47,31 @@ public class TextIngestionService {
         String cleanedMarkdown = summarizationService.summarize(rawMarkdown);
 
         // 2) Ask the LLM what to do with this new material
-        List<SuggestionDto> suggestions = analyzerService.suggest(cleanedMarkdown);
+        List<ProposalDto> proposals = analyzerService.propose(cleanedMarkdown);
 
-        if (suggestions.isEmpty()) {
-            return Collections.emptyList();   // nothing to change
+        if (proposals.isEmpty()) {
+            return List.of();   // nothing to change
         }
 
         // 3) Apply the generated commands (DB + Git)
-        return updaterService.apply(suggestions);
+        return updaterService.apply(proposals);
+    }
+
+    public List<CourseContent> reviewAndApply(String raw)
+            throws IOException, InterruptedException {
+
+        String cleaned = summarizationService.summarize(raw);
+        List<ProposalDto> proposals = analyzerService.propose(cleaned);
+
+        if (proposals.isEmpty()) return List.of();
+
+        List<CourseContent> changed = updaterService.apply(proposals);
+
+        gitCli.createPr(
+                "update-" + System.currentTimeMillis(),
+                "Course updates (" + changed.size() + " slides)",
+                "Automated AI proposals"
+        );
+        return changed;
     }
 }
