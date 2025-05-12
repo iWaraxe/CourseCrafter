@@ -3,10 +3,13 @@ spring:
     name: CourseCrafter\
 
   datasource:
-    url: jdbc:postgresql://localhost:5432/rag
-    username: ai_user
-    password: secret
+    url: jdbc:postgresql://localhost:5432/coursecrafter
+    username: coursecrafter
+    password: 19_secret_78
     driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update        # dev-friendly: creates tables if missing
 
   ai:
     openai:
@@ -15,7 +18,14 @@ spring:
         options:
           # Default model: text-embedding-ada-002
           model: text-embedding-3-small
-
     vectorstore:
       pgvector:
-        initialize-schema: true
+        initialize-schema: false
+
+git:
+  repo:
+    root: /Users/igorwaraxe/ClaudeCode/CourseUpdater/course-material-repo
+    remote: origin
+    defaultBranch: main
+  auth:
+    githubToken: ${GITHUB_PAT}   # read from env-var
