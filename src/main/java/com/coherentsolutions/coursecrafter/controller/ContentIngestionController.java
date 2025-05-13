@@ -1,6 +1,6 @@
 package com.coherentsolutions.coursecrafter.controller;
 
-import com.coherentsolutions.coursecrafter.dto.IngestionRequest;
+import com.coherentsolutions.coursecrafter.presentation.dto.content.IngestionRequest;
 import com.coherentsolutions.coursecrafter.model.ContentNode;
 import com.coherentsolutions.coursecrafter.service.ingest.EnhancedTextIngestionService;
 import lombok.RequiredArgsConstructor;

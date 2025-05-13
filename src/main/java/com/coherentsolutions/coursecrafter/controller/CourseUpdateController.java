@@ -1,6 +1,6 @@
 package com.coherentsolutions.coursecrafter.controller;
 
-import com.coherentsolutions.coursecrafter.dto.CourseUpdateRequest;
+import com.coherentsolutions.coursecrafter.presentation.dto.content.CourseUpdateRequest;
 import com.coherentsolutions.coursecrafter.model.CourseContent;
 import com.coherentsolutions.coursecrafter.service.ContentHierarchyService;
 import com.coherentsolutions.coursecrafter.service.ingest.EnhancedTextIngestionService;

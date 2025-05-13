@@ -1,8 +1,7 @@
 package com.coherentsolutions.coursecrafter.service.ai;
 
-import com.coherentsolutions.coursecrafter.dto.AiProposalDto;
-import com.coherentsolutions.coursecrafter.dto.AiProposalListDto;
-import com.coherentsolutions.coursecrafter.model.ContentNode;
+import com.coherentsolutions.coursecrafter.presentation.dto.ai.AiProposalDto;
+import com.coherentsolutions.coursecrafter.presentation.dto.ai.AiProposalListDto;
 import com.coherentsolutions.coursecrafter.service.ContentHierarchyService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;

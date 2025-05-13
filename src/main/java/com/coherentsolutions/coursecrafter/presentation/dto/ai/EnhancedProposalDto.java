@@ -1,4 +1,4 @@
-package com.coherentsolutions.coursecrafter.dto;
+package com.coherentsolutions.coursecrafter.presentation.dto.ai;
 
 // Enhanced proposal DTO with more fields
 public record EnhancedProposalDto(
@@ -8,7 +8,7 @@ public record EnhancedProposalDto(
         String sectionTitle,      // For reference
         Long slideId,             // Target slide ID (null for new slides)
         String slideTitle,        // Title for the slide
-        ProposalDto.Action action, // ADD, UPDATE, DELETE
+        Action action,            // ADD, UPDATE, DELETE
         String originalContent,   // Original content (for UPDATE/DELETE)
         String updatedContent,    // New/updated content
         String rationale,         // Explanation of why this change is needed

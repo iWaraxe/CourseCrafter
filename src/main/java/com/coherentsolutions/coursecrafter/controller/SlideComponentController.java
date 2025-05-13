@@ -1,7 +1,7 @@
 package com.coherentsolutions.coursecrafter.controller;
 
-import com.coherentsolutions.coursecrafter.dto.ComponentCreateRequest;
-import com.coherentsolutions.coursecrafter.dto.ComponentUpdateRequest;
+import com.coherentsolutions.coursecrafter.presentation.dto.slide.ComponentCreateRequest;
+import com.coherentsolutions.coursecrafter.presentation.dto.slide.ComponentUpdateRequest;
 import com.coherentsolutions.coursecrafter.model.SlideComponent;
 import com.coherentsolutions.coursecrafter.service.SlideComponentService;
 import lombok.RequiredArgsConstructor;

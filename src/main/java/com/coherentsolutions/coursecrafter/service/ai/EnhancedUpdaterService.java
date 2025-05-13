@@ -1,8 +1,7 @@
 package com.coherentsolutions.coursecrafter.service.ai;
 
-import com.coherentsolutions.coursecrafter.dto.AiProposalDto;
+import com.coherentsolutions.coursecrafter.presentation.dto.ai.AiProposalDto;
 import com.coherentsolutions.coursecrafter.model.ContentNode;
-import com.coherentsolutions.coursecrafter.model.ContentVersion;
 import com.coherentsolutions.coursecrafter.repo.ContentNodeRepository;
 import com.coherentsolutions.coursecrafter.repo.ContentVersionRepository;
 import com.coherentsolutions.coursecrafter.service.ContentNodeService;

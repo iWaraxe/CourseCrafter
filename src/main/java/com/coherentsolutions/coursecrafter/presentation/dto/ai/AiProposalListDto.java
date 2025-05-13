@@ -1,4 +1,4 @@
-package com.coherentsolutions.coursecrafter.dto;
+package com.coherentsolutions.coursecrafter.presentation.dto.ai;
 
 import java.util.List;
 

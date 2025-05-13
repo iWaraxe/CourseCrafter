@@ -1,4 +1,4 @@
-package com.coherentsolutions.coursecrafter.dto;
+package com.coherentsolutions.coursecrafter.presentation.dto.content;
 
 // DTO for the request
 public record CourseUpdateRequest(String content) {}

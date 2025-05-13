@@ -1,5 +1,5 @@
 // request/response & AI-exchange POJOs
-package com.coherentsolutions.coursecrafter.dto;
+package com.coherentsolutions.coursecrafter.presentation.dto.content;
 
 // ------------ Incoming ingestion payload ------------
 public record IngestionRequest(

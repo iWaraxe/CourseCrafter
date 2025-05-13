@@ -1,7 +1,7 @@
 package com.coherentsolutions.coursecrafter.service;
 
-import com.coherentsolutions.coursecrafter.dto.ContentNodeDto;
-import com.coherentsolutions.coursecrafter.dto.ContentTreeDto;
+import com.coherentsolutions.coursecrafter.presentation.dto.content.ContentNodeDto;
+import com.coherentsolutions.coursecrafter.presentation.dto.content.ContentTreeDto;
 import com.coherentsolutions.coursecrafter.model.ContentNode;
 import com.coherentsolutions.coursecrafter.model.ContentVersion;
 import com.coherentsolutions.coursecrafter.repo.ContentNodeRepository;

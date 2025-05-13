@@ -1,6 +1,6 @@
 package com.coherentsolutions.coursecrafter.service.ingest;
 
-import com.coherentsolutions.coursecrafter.dto.AiProposalDto;
+import com.coherentsolutions.coursecrafter.presentation.dto.ai.AiProposalDto;
 import com.coherentsolutions.coursecrafter.model.ContentNode;
 import com.coherentsolutions.coursecrafter.model.CourseContent;
 import com.coherentsolutions.coursecrafter.service.ai.EnhancedAnalyzerService;

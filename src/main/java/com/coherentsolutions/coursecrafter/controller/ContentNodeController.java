@@ -1,8 +1,8 @@
 package com.coherentsolutions.coursecrafter.controller;
 
-import com.coherentsolutions.coursecrafter.dto.ContentCreateRequest;
-import com.coherentsolutions.coursecrafter.dto.ContentTreeDto;
-import com.coherentsolutions.coursecrafter.dto.ContentUpdateRequest;
+import com.coherentsolutions.coursecrafter.presentation.dto.content.ContentCreateRequest;
+import com.coherentsolutions.coursecrafter.presentation.dto.content.ContentTreeDto;
+import com.coherentsolutions.coursecrafter.presentation.dto.content.ContentUpdateRequest;
 import com.coherentsolutions.coursecrafter.model.ContentNode;
 import com.coherentsolutions.coursecrafter.service.ContentHierarchyService;
 import com.coherentsolutions.coursecrafter.service.ContentNodeService;
