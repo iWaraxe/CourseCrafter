@@ -2,12 +2,6 @@
 package com.coherentsolutions.coursecrafter.dto;
 
 // ------------ Analyzer -> Updater suggestion ------------
-public record ProposalDto(
-        Long lectureId,
-        Long slideId,
-        Action action,   // ADD, UPDATE, DELETE
-        String text,     // new or replacement markdown
-        String id        // unique ID for tracking in PR
-) {
+public record ProposalDto() {
     public enum Action { ADD, UPDATE, DELETE }
 }

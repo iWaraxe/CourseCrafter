@@ -147,4 +147,54 @@ public class EnhancedAnalyzerService {
                 proposal.displayOrder()
         );
     }
+
+    /**
+     * Course-specific version of content analysis
+     * Takes the course name into account during analysis
+     */
+    public List<AiProposalDto> analyzeContentForCourse(String courseName, String newContent) {
+        // Get course structure as formatted text for LLM context
+        String courseContext = hierarchyService.generateLlmOutlineContextForCourse(courseName);
+
+        var response = chatClient.prompt()
+                .system("""
+                    You are CourseCrafter AI, an expert system for educational content analysis.
+                    
+                    You will be given:
+                    1. The current structure and content of a course named "%s"
+                    2. New content to be integrated into this course
+                    
+                    Analyze where and how this new content should be integrated. Focus specifically on how
+                    it fits within the existing structure of the "%s" course.
+                    
+                    Return a JSON array of proposals following this schema:
+                    [{
+                      "targetNodeId": Long?,      // ID of existing node to modify, null for new nodes
+                      "parentNodeId": Long,       // Parent ID where to place new content
+                      "nodeType": "LECTURE|SECTION|TOPIC|SLIDE",
+                      "action": "ADD|UPDATE|DELETE",
+                      "title": String,            // Title for the node
+                      "nodeNumber": String?,      // Node number in the hierarchy (e.g., "1.2.3")
+                      "content": String,          // Content to add/replace
+                      "rationale": String,        // Explanation of why this change is needed
+                      "displayOrder": Integer?    // Suggested display order
+                    }]
+                    """.formatted(courseName, courseName))
+                .user("""
+                    # %s COURSE STRUCTURE
+                    %s
+                    
+                    # NEW CONTENT TO INTEGRATE
+                    %s
+                    """.formatted(courseName, courseContext, newContent))
+                .call();
+
+        try {
+            String jsonResponse = response.content();
+            AiProposalListDto proposalList = objectMapper.readValue(jsonResponse, AiProposalListDto.class);
+            return proposalList.proposals();
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to parse AI suggestions", e);
+        }
+    }
 }

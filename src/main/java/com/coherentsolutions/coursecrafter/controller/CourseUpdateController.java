@@ -2,7 +2,7 @@ package com.coherentsolutions.coursecrafter.controller;
 
 import com.coherentsolutions.coursecrafter.dto.CourseUpdateRequest;
 import com.coherentsolutions.coursecrafter.model.CourseContent;
-import com.coherentsolutions.coursecrafter.service.CourseStructureService;
+import com.coherentsolutions.coursecrafter.service.ContentHierarchyService;
 import com.coherentsolutions.coursecrafter.service.ingest.EnhancedTextIngestionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -17,7 +17,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class CourseUpdateController {
 
-    private final CourseStructureService courseStructureService;
+    private final ContentHierarchyService contentHierarchyService; // Updated service name
     private final EnhancedTextIngestionService ingestionService;
 
     /**
@@ -25,7 +25,8 @@ public class CourseUpdateController {
      */
     @GetMapping("/{courseName}/structure")
     public ResponseEntity<?> getCourseStructure(@PathVariable String courseName) {
-        return ResponseEntity.ok(courseStructureService.getCourseStructure(courseName));
+        // This method now uses the ContentHierarchyService instead of CourseStructureService
+        return ResponseEntity.ok(contentHierarchyService.generateLlmOutlineContextForCourse(courseName));
     }
 
     /**

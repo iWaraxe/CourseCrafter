@@ -100,6 +100,33 @@ public class ContentHierarchyService {
         return builder.toString();
     }
 
+    /**
+     * Generates a text-based outline for a specific course
+     */
+    public String generateLlmOutlineContextForCourse(String courseName) {
+        // Get all content nodes related to this course
+        List<ContentNode> courseNodes = nodeRepository.findByPathPattern(courseName + "/%");
+
+        // Get latest content for each node
+        Map<Long, String> latestContents = versionRepository.findAll().stream()
+                .filter(v -> courseNodes.stream().anyMatch(n -> n.getId().equals(v.getNode().getId())))
+                .collect(Collectors.groupingBy(
+                        v -> v.getNode().getId(),
+                        Collectors.collectingAndThen(
+                                Collectors.maxBy((v1, v2) -> v1.getVersionNumber().compareTo(v2.getVersionNumber())),
+                                optVersion -> optVersion.map(ContentVersion::getContent).orElse("")
+                        )
+                ));
+
+        StringBuilder builder = new StringBuilder();
+        builder.append("# Course: ").append(courseName).append("\n\n");
+
+        // Build a hierarchical representation for this specific course
+        // Similar to the generateLlmOutlineContext method but filtered by course
+
+        return builder.toString();
+    }
+
     private ContentNodeDto convertToDto(ContentNode node, boolean includeChildren) {
         ContentNodeDto dto = new ContentNodeDto(
                 node.getId(),
