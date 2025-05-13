@@ -1,9 +1,9 @@
 package com.coherentsolutions.coursecrafter.service.ai;
 
-import com.coherentsolutions.coursecrafter.dto.EnhancedProposalDto;
-import com.coherentsolutions.coursecrafter.dto.ProposalDto;
-import com.coherentsolutions.coursecrafter.service.CourseStructureService;
-import com.fasterxml.jackson.core.type.TypeReference;
+import com.coherentsolutions.coursecrafter.dto.AiProposalDto;
+import com.coherentsolutions.coursecrafter.dto.AiProposalListDto;
+import com.coherentsolutions.coursecrafter.model.ContentNode;
+import com.coherentsolutions.coursecrafter.service.ContentHierarchyService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.ai.chat.client.ChatClient;
@@ -15,128 +15,119 @@ import java.util.List;
 @RequiredArgsConstructor
 public class EnhancedAnalyzerService {
 
-    private final CourseStructureService courseStructureService;
+    private final ContentHierarchyService hierarchyService;
     private final ChatClient chatClient;
-    private final ObjectMapper mapper = new ObjectMapper();
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     /**
-     * First stage analysis: Determine which parts of the course need updates
-     * @param courseName name of the course
-     * @param newContent proposed new content
-     * @return list of proposed updates with specific locations
+     * Analyzes new content and generates proposals for integrating it
+     * into the existing content structure
      */
-    public List<EnhancedProposalDto> analyzeContentPlacement(String courseName, String newContent) {
-        // Get the course outline as text
-        String courseOutline = courseStructureService.getCourseOutlineText(courseName);
+    public List<AiProposalDto> analyzeContent(String newContent) {
+        // Get course structure as formatted text for LLM context
+        String courseContext = hierarchyService.generateLlmOutlineContext();
 
-        // Prompt the LLM to analyze where the new content should be placed
-        var result = chatClient.prompt()
+        var response = chatClient.prompt()
                 .system("""
-                        You are CourseCrafter AI, an educational content analysis expert.
+                        You are CourseCrafter AI, an expert system for educational content analysis.
                         
                         You will be given:
-                        1. A structured outline of an existing course with lectures, sections, and slides
-                        2. New content that needs to be integrated into the course
+                        1. The current structure and content of a course
+                        2. New content to be integrated into this course
                         
-                        Your task is to identify exactly where this new content should be placed:
-                        
-                        - If content should be added as a new slide, specify the parent lecture and section
-                        - If content should update an existing slide, identify that specific slide
-                        - If content should replace an existing slide, mark it for deletion and suggest a new slide
-                        
-                        Return a JSON array of update proposals, following this schema:
+                        Analyze where and how this new content should be integrated. Return a JSON array of proposals following this schema:
                         [{
-                          "lectureId": number,        // Parent lecture ID
-                          "lectureTitle": string,     // Title of the lecture
-                          "sectionId": number,        // Parent section ID
-                          "sectionTitle": string,     // Title of the section
-                          "slideId": number | null,   // Slide ID (null for new slides)
-                          "slideTitle": string,       // Title for the slide
-                          "action": "ADD"|"UPDATE"|"DELETE", // Type of change
-                          "originalContent": string,  // Original content (for UPDATE/DELETE)
-                          "updatedContent": string,   // New content (for ADD/UPDATE)
-                          "rationale": string,        // Why this change is needed
-                          "id": string               // Unique ID for tracking
+                          "targetNodeId": Long?,      // ID of existing node to modify, null for new nodes
+                          "parentNodeId": Long,       // Parent ID where to place new content
+                          "nodeType": "LECTURE|SECTION|TOPIC|SLIDE",
+                          "action": "ADD|UPDATE|DELETE",
+                          "title": String,            // Title for the node
+                          "nodeNumber": String?,      // Node number in the hierarchy (e.g., "1.2.3")
+                          "content": String,          // Content to add/replace
+                          "rationale": String,        // Explanation of why this change is needed
+                          "displayOrder": Integer?    // Suggested display order
                         }]
                         
-                        Be strategic in your analysis. Look for:
-                        1. Content gaps that need to be filled
-                        2. Outdated content that needs updating
-                        3. Logical placement in the course flow
+                        For new nodes (targetNodeId = null), you must specify:
+                        - The parentNodeId where it should be placed
+                        - The nodeType it should be
+                        - A meaningful title
+                        - The content
                         
-                        Pay attention to the IDs in the course outline - they're critical for correct placement.
+                        For updates (targetNodeId != null), provide:
+                        - The targetNodeId to modify
+                        - New/modified content
+                        
+                        Be strategic and thoughtful about:
+                        1. Where content logically fits in the course structure
+                        2. Whether to create new nodes or update existing ones
+                        3. Maintaining consistent style and format with existing content
                         """)
                 .user("""
-                        # COURSE OUTLINE
+                        # COURSE STRUCTURE
                         %s
                         
                         # NEW CONTENT TO INTEGRATE
                         %s
-                        """.formatted(courseOutline, newContent))
+                        """.formatted(courseContext, newContent))
                 .call();
 
         try {
-            String json = result.content();
-            return mapper.readValue(json, new TypeReference<List<EnhancedProposalDto>>() {});
+            String jsonResponse = response.content();
+            AiProposalListDto proposalList = objectMapper.readValue(jsonResponse, AiProposalListDto.class);
+            return proposalList.proposals();
         } catch (Exception e) {
-            throw new RuntimeException("Failed to parse AI response", e);
+            throw new RuntimeException("Failed to parse AI suggestions", e);
         }
     }
 
     /**
-     * Second stage analysis: Generate specific content for updates
-     * @param proposal initial proposal with placement information
-     * @return refined proposal with finalized content
+     * Refines a specific content proposal for better integration
      */
-    public EnhancedProposalDto refineContent(EnhancedProposalDto proposal) {
-        // This stage is for refining the actual content of the proposed change
-        var result = chatClient.prompt()
+    public AiProposalDto refineProposal(AiProposalDto proposal, String existingContent) {
+        var refinementResponse = chatClient.prompt()
                 .system("""
-                        You are CourseCrafter AI, an educational content specialist.
+                        You are CourseCrafter AI, an expert in educational content creation.
                         
-                        You're now refining a proposed course update. You will be given:
-                        1. The original slide content (if updating/replacing)
-                        2. The initially proposed content update
+                        You're refining a content proposal to ensure it:
+                        1. Uses consistent terminology and style
+                        2. Has appropriate length and depth
+                        3. Flows well with surrounding content
+                        4. Follows best practices for educational material
                         
-                        Your task is to create the final, polished version of this content that:
-                        - Uses clear, concise educational language
-                        - Maintains consistent formatting with the rest of the course
-                        - Integrates well with surrounding content
-                        - Follows best practices for slide design
-                        
-                        Return ONLY the finalized Markdown content.
+                        Return the refined content only, maintaining all markdown formatting.
                         """)
                 .user("""
-                        # CONTEXT
-                        Lecture: %s (ID: %d)
-                        Section: %s (ID: %d)
+                        # ORIGINAL PROPOSAL
                         Action: %s
+                        Title: %s
+                        Node Type: %s
                         
-                        # ORIGINAL CONTENT
-                        ```markdown
+                        # EXISTING CONTENT
+                        ```
                         %s
                         ```
                         
-                        # PROPOSED UPDATE
-                        ```markdown
+                        # PROPOSED CONTENT
+                        ```
                         %s
                         ```
                         
-                        # RATIONALE FOR CHANGE
+                        # RATIONALE
                         %s
                         """.formatted(
-                        proposal.lectureTitle(), proposal.lectureId(),
-                        proposal.sectionTitle(), proposal.sectionId(),
                         proposal.action(),
-                        proposal.originalContent() != null ? proposal.originalContent() : "N/A",
-                        proposal.updatedContent(),
+                        proposal.title(),
+                        proposal.nodeType(),
+                        existingContent != null ? existingContent : "N/A",
+                        proposal.content(),
                         proposal.rationale()
                 ))
                 .call();
 
-        String refinedContent = result.content().trim();
+        String refinedContent = refinementResponse.content();
 
-        // If the response has markdown code blocks, extract just the content
+        // Extract content if wrapped in code blocks
         if (refinedContent.startsWith("```") && refinedContent.endsWith("```")) {
             refinedContent = refinedContent
                     .replaceFirst("```(?:markdown)?\\n", "")
@@ -144,18 +135,16 @@ public class EnhancedAnalyzerService {
         }
 
         // Return updated proposal with refined content
-        return new EnhancedProposalDto(
-                proposal.lectureId(),
-                proposal.lectureTitle(),
-                proposal.sectionId(),
-                proposal.sectionTitle(),
-                proposal.slideId(),
-                proposal.slideTitle(),
+        return new AiProposalDto(
+                proposal.targetNodeId(),
+                proposal.parentNodeId(),
+                proposal.nodeType(),
                 proposal.action(),
-                proposal.originalContent(),
+                proposal.title(),
+                proposal.nodeNumber(),
                 refinedContent,
                 proposal.rationale(),
-                proposal.id()
+                proposal.displayOrder()
         );
     }
 }

@@ -11,7 +11,7 @@ import java.io.IOException;
 
 @Service
 @RequiredArgsConstructor
-public class CourseContentService {
+public class CourseContentServiceDeprecate {
 
     private final CourseContentRepository repo;
     private final GitCliService git;   // you already wired this

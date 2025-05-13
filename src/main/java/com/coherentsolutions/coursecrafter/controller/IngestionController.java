@@ -3,8 +3,7 @@ package com.coherentsolutions.coursecrafter.controller;
 
 import com.coherentsolutions.coursecrafter.dto.IngestionRequest;
 import com.coherentsolutions.coursecrafter.model.CourseContent;
-import com.coherentsolutions.coursecrafter.repo.CourseContentRepository;
-import com.coherentsolutions.coursecrafter.service.CourseContentService;
+import com.coherentsolutions.coursecrafter.service.CourseContentServiceDeprecate;
 import com.coherentsolutions.coursecrafter.service.ingest.TextIngestionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -21,7 +20,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class IngestionController {
 
-    private final CourseContentService service;
+    private final CourseContentServiceDeprecate service;
     private final TextIngestionService textIngestionService;
 
     @PostMapping("/text")

@@ -1,97 +1,158 @@
 package com.coherentsolutions.coursecrafter.service.ai;
 
-import com.coherentsolutions.coursecrafter.dto.EnhancedProposalDto;
-import com.coherentsolutions.coursecrafter.dto.ProposalDto;
-import com.coherentsolutions.coursecrafter.model.CourseContent;
-import com.coherentsolutions.coursecrafter.repo.CourseContentRepository;
+import com.coherentsolutions.coursecrafter.dto.AiProposalDto;
+import com.coherentsolutions.coursecrafter.model.ContentNode;
+import com.coherentsolutions.coursecrafter.model.ContentVersion;
+import com.coherentsolutions.coursecrafter.repo.ContentNodeRepository;
+import com.coherentsolutions.coursecrafter.repo.ContentVersionRepository;
+import com.coherentsolutions.coursecrafter.service.ContentNodeService;
 import com.coherentsolutions.coursecrafter.service.git.GitCliService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
 public class EnhancedUpdaterService {
 
-    private final CourseContentRepository repo;
-    private final GitCliService gitCli;
+    private final ContentNodeRepository nodeRepository;
+    private final ContentVersionRepository versionRepository;
+    private final ContentNodeService nodeService;
+    private final GitCliService gitService;
 
     /**
-     * Applies a batch of enhanced proposals
+     * Apply a list of AI-generated proposals to the content structure
      */
     @Transactional
-    public List<CourseContent> applyProposals(List<EnhancedProposalDto> proposals, String branchName)
+    public List<ContentNode> applyProposals(List<AiProposalDto> proposals)
             throws IOException, InterruptedException {
 
-        List<CourseContent> changed = new ArrayList<>();
+        List<ContentNode> updatedNodes = new ArrayList<>();
+        String branchName = "content-update-" + System.currentTimeMillis();
 
-        for (EnhancedProposalDto proposal : proposals) {
+        for (AiProposalDto proposal : proposals) {
+            ContentNode node;
+
             switch (proposal.action()) {
-                case ADD -> {
-                    CourseContent newContent = createSlide(
-                            proposal.sectionId(),  // Important: use sectionId as parent
-                            proposal.slideTitle(),
-                            proposal.updatedContent(),
-                            generatePath(proposal.lectureId(), proposal.sectionId())
-                    );
-                    changed.add(newContent);
-                }
-                case UPDATE -> {
-                    CourseContent updated = updateSlide(
-                            proposal.slideId(),
-                            proposal.slideTitle(),
-                            proposal.updatedContent()
-                    );
-                    changed.add(updated);
-                }
-                case DELETE -> deleteSlide(proposal.slideId());
+                case "ADD":
+                    node = createNewNode(proposal);
+                    updatedNodes.add(node);
+                    break;
+
+                case "UPDATE":
+                    node = updateExistingNode(proposal);
+                    if (node != null) {
+                        updatedNodes.add(node);
+                    }
+                    break;
+
+                case "DELETE":
+                    deleteNode(proposal.targetNodeId());
+                    break;
             }
         }
 
-        if (!changed.isEmpty()) {
-            repo.saveAll(changed);
-            gitCli.commitAndPush(
+        // Commit all changes together
+        if (!updatedNodes.isEmpty()) {
+            gitService.commitAndPush(
                     branchName,
-                    "Apply AI-generated course updates (" + changed.size() + " changes)"
-            );
+                    "Apply AI content updates: " + updatedNodes.size() + " changes");
+
+            // Create PR
+            gitService.createPr(
+                    branchName,
+                    "Content Updates: " + updatedNodes.size() + " changes",
+                    generatePrDescription(proposals, updatedNodes));
         }
 
-        return changed;
+        return updatedNodes;
     }
 
-    private CourseContent createSlide(Long parentId, String title, String markdown, String path) {
-        CourseContent content = CourseContent.builder()
-                .parentId(parentId)  // Set the parentId (section)
-                .level("SLIDE")
-                .title(title)
-                .markdown(markdown)
-                .path(path)
+    private ContentNode createNewNode(AiProposalDto proposal) throws IOException, InterruptedException {
+        // Get parent node
+        ContentNode parent = nodeRepository.findById(proposal.parentNodeId())
+                .orElseThrow(() -> new IllegalArgumentException("Parent node not found: " + proposal.parentNodeId()));
+
+        // Create the new node
+        ContentNode node = ContentNode.builder()
+                .parent(parent)
+                .nodeType(ContentNode.NodeType.valueOf(proposal.nodeType()))
+                .title(proposal.title())
+                .nodeNumber(proposal.nodeNumber())
+                .displayOrder(proposal.displayOrder() != null ? proposal.displayOrder() : 100)
+                .createdAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
                 .build();
 
-        return repo.save(content);
+        // Save node and initial version
+        return nodeService.createNode(node, proposal.content(),
+                "Add new " + proposal.nodeType() + ": " + proposal.title());
     }
 
-    private CourseContent updateSlide(Long slideId, String title, String markdown) {
-        CourseContent slide = repo.findById(slideId)
-                .orElseThrow(() -> new IllegalArgumentException("Slide not found: " + slideId));
+    private ContentNode updateExistingNode(AiProposalDto proposal) throws IOException, InterruptedException {
+        Optional<ContentNode> existingNode = nodeRepository.findById(proposal.targetNodeId());
 
-        slide.setTitle(title);
-        slide.setMarkdown(markdown);
+        if (existingNode.isPresent()) {
+            ContentNode node = existingNode.get();
 
-        return repo.save(slide);
+            // Update basic properties if provided
+            if (proposal.title() != null && !proposal.title().isBlank()) {
+                node.setTitle(proposal.title());
+            }
+
+            if (proposal.nodeNumber() != null && !proposal.nodeNumber().isBlank()) {
+                node.setNodeNumber(proposal.nodeNumber());
+            }
+
+            if (proposal.displayOrder() != null) {
+                node.setDisplayOrder(proposal.displayOrder());
+            }
+
+            node.setUpdatedAt(LocalDateTime.now());
+
+            // Create new content version
+            return nodeService.updateNode(node.getId(), proposal.content(),
+                    "Update " + node.getNodeType() + ": " + node.getTitle());
+        }
+
+        return null;
     }
 
-    private void deleteSlide(Long slideId) {
-        repo.deleteById(slideId);
+    private void deleteNode(Long nodeId) throws IOException, InterruptedException {
+        nodeService.deleteNode(nodeId, "Delete content node: " + nodeId);
     }
 
-    private String generatePath(Long lectureId, Long sectionId) {
-        return String.format("Lecture%d/Section%d/Slide-%s",
-                lectureId, sectionId, UUID.randomUUID().toString().substring(0, 8));
+    private String generatePrDescription(List<AiProposalDto> proposals, List<ContentNode> updatedNodes) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("# AI-Generated Content Updates\n\n");
+        sb.append("This PR contains the following ").append(proposals.size()).append(" changes:\n\n");
+
+        int i = 1;
+        for (AiProposalDto proposal : proposals) {
+            sb.append("## ").append(i++).append(". ")
+                    .append(proposal.action()).append(": ")
+                    .append(proposal.title()).append("\n\n");
+
+            sb.append("**Node Type:** ").append(proposal.nodeType()).append("\n");
+            sb.append("**Rationale:** ").append(proposal.rationale()).append("\n\n");
+
+            if (!"DELETE".equals(proposal.action())) {
+                sb.append("<details>\n<summary>Content Preview</summary>\n\n```markdown\n");
+                String contentPreview = proposal.content().length() > 300
+                        ? proposal.content().substring(0, 300) + "..."
+                        : proposal.content();
+                sb.append(contentPreview).append("\n```\n</details>\n\n");
+            }
+        }
+
+        sb.append("Please review these changes and provide feedback.");
+
+        return sb.toString();
     }
 }
