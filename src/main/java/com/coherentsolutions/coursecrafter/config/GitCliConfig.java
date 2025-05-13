@@ -1,7 +1,7 @@
 //repo root, Git binary path, PAT token
 package com.coherentsolutions.coursecrafter.config;
 
-import com.coherentsolutions.coursecrafter.service.git.GitCliService;
+import com.coherentsolutions.coursecrafter.infrastructure.git.GitCliService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

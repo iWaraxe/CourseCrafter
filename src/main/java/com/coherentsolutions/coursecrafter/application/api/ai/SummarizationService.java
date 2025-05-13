@@ -1,4 +1,4 @@
-package com.coherentsolutions.coursecrafter.service.ai;
+package com.coherentsolutions.coursecrafter.application.api.ai;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.ai.chat.client.ChatClient;

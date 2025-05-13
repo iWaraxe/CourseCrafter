@@ -2,7 +2,7 @@ package com.coherentsolutions.coursecrafter.controller;
 
 import com.coherentsolutions.coursecrafter.presentation.dto.content.IngestionRequest;
 import com.coherentsolutions.coursecrafter.model.ContentNode;
-import com.coherentsolutions.coursecrafter.service.ingest.EnhancedTextIngestionService;
+import com.coherentsolutions.coursecrafter.application.service.EnhancedTextIngestionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;

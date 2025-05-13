@@ -1,8 +1,8 @@
-package com.coherentsolutions.coursecrafter.service.ai;
+package com.coherentsolutions.coursecrafter.application.api.ai;
 
 import com.coherentsolutions.coursecrafter.presentation.dto.ai.AiProposalDto;
 import com.coherentsolutions.coursecrafter.presentation.dto.ai.AiProposalListDto;
-import com.coherentsolutions.coursecrafter.service.ContentHierarchyService;
+import com.coherentsolutions.coursecrafter.domain.content.service.ContentHierarchyService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.ai.chat.client.ChatClient;

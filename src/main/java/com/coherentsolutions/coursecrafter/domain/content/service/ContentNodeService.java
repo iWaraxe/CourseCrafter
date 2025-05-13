@@ -1,10 +1,10 @@
-package com.coherentsolutions.coursecrafter.service;
+package com.coherentsolutions.coursecrafter.domain.content.service;
 
 import com.coherentsolutions.coursecrafter.model.ContentNode;
 import com.coherentsolutions.coursecrafter.model.ContentVersion;
 import com.coherentsolutions.coursecrafter.repo.ContentNodeRepository;
 import com.coherentsolutions.coursecrafter.repo.ContentVersionRepository;
-import com.coherentsolutions.coursecrafter.service.git.GitCliService;
+import com.coherentsolutions.coursecrafter.infrastructure.git.GitCliService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

@@ -2,8 +2,8 @@ package com.coherentsolutions.coursecrafter.controller;
 
 import com.coherentsolutions.coursecrafter.presentation.dto.content.CourseUpdateRequest;
 import com.coherentsolutions.coursecrafter.model.CourseContent;
-import com.coherentsolutions.coursecrafter.service.ContentHierarchyService;
-import com.coherentsolutions.coursecrafter.service.ingest.EnhancedTextIngestionService;
+import com.coherentsolutions.coursecrafter.domain.content.service.ContentHierarchyService;
+import com.coherentsolutions.coursecrafter.application.service.EnhancedTextIngestionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;

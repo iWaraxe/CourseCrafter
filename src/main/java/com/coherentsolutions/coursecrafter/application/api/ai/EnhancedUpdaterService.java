@@ -1,11 +1,11 @@
-package com.coherentsolutions.coursecrafter.service.ai;
+package com.coherentsolutions.coursecrafter.application.api.ai;
 
 import com.coherentsolutions.coursecrafter.presentation.dto.ai.AiProposalDto;
 import com.coherentsolutions.coursecrafter.model.ContentNode;
 import com.coherentsolutions.coursecrafter.repo.ContentNodeRepository;
 import com.coherentsolutions.coursecrafter.repo.ContentVersionRepository;
-import com.coherentsolutions.coursecrafter.service.ContentNodeService;
-import com.coherentsolutions.coursecrafter.service.git.GitCliService;
+import com.coherentsolutions.coursecrafter.domain.content.service.ContentNodeService;
+import com.coherentsolutions.coursecrafter.infrastructure.git.GitCliService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

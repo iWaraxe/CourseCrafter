@@ -3,7 +3,7 @@ package com.coherentsolutions.coursecrafter.controller;
 import com.coherentsolutions.coursecrafter.presentation.dto.slide.ComponentCreateRequest;
 import com.coherentsolutions.coursecrafter.presentation.dto.slide.ComponentUpdateRequest;
 import com.coherentsolutions.coursecrafter.model.SlideComponent;
-import com.coherentsolutions.coursecrafter.service.SlideComponentService;
+import com.coherentsolutions.coursecrafter.domain.slide.service.SlideComponentService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;

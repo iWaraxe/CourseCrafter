@@ -1,11 +1,11 @@
-package com.coherentsolutions.coursecrafter.service.ingest;
+package com.coherentsolutions.coursecrafter.application.service;
 
 import com.coherentsolutions.coursecrafter.presentation.dto.ai.AiProposalDto;
 import com.coherentsolutions.coursecrafter.model.ContentNode;
 import com.coherentsolutions.coursecrafter.model.CourseContent;
-import com.coherentsolutions.coursecrafter.service.ai.EnhancedAnalyzerService;
-import com.coherentsolutions.coursecrafter.service.ai.EnhancedUpdaterService;
-import com.coherentsolutions.coursecrafter.service.ai.SummarizationService;
+import com.coherentsolutions.coursecrafter.application.api.ai.EnhancedAnalyzerService;
+import com.coherentsolutions.coursecrafter.application.api.ai.EnhancedUpdaterService;
+import com.coherentsolutions.coursecrafter.application.api.ai.SummarizationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 

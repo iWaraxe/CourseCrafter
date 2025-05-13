@@ -1,4 +1,4 @@
-package com.coherentsolutions.coursecrafter.service;
+package com.coherentsolutions.coursecrafter.domain.content.service;
 
 import com.coherentsolutions.coursecrafter.presentation.dto.content.ContentNodeDto;
 import com.coherentsolutions.coursecrafter.presentation.dto.content.ContentTreeDto;

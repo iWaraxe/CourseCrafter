@@ -1,4 +1,4 @@
-package com.coherentsolutions.coursecrafter.service;
+package com.coherentsolutions.coursecrafter.domain.slide.service;
 
 import com.coherentsolutions.coursecrafter.model.ContentNode;
 import com.coherentsolutions.coursecrafter.model.SlideComponent;
