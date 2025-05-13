@@ -2,7 +2,7 @@
 // CONFIGURATION LAYER  (package com.coursecrafter.config)
 // ─────────────────────────────────────────────────────────
 //sets API key, chat model, temp, etc.
-package com.coherentsolutions.coursecrafter.config;
+package com.coherentsolutions.coursecrafter.infrastructure.config;
 
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.context.annotation.Bean;

@@ -1,10 +1,12 @@
-package com.coherentsolutions.coursecrafter.model;
+package com.coherentsolutions.coursecrafter.domain.content.model;
 
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -17,7 +19,8 @@ import java.util.Set;
 @AllArgsConstructor
 @Builder
 public class ContentNode {
-    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -40,17 +43,19 @@ public class ContentNode {
     // Path provides quick hierarchical access (e.g., "Course/Lecture1/Section2")
     private String path;
 
+    // Properly define metadataJson as a JSONB column
     @Column(columnDefinition = "jsonb")
+    @JdbcTypeCode(SqlTypes.JSON)
     private String metadataJson;  // Flexible extra attributes
 
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
     @OneToMany(mappedBy = "node", cascade = CascadeType.ALL)
-    private List<ContentVersion> versions;
+    private List<com.coherentsolutions.coursecrafter.domain.version.model.ContentVersion> versions;
 
     @OneToMany(mappedBy = "slideNode", cascade = CascadeType.ALL)
-    private List<SlideComponent> slideComponents;
+    private List<com.coherentsolutions.coursecrafter.domain.slide.model.SlideComponent> slideComponents;
 
     @ManyToMany
     @JoinTable(
@@ -58,7 +63,7 @@ public class ContentNode {
             joinColumns = @JoinColumn(name = "node_id"),
             inverseJoinColumns = @JoinColumn(name = "tag_id")
     )
-    private Set<Tag> tags;
+    private Set<com.coherentsolutions.coursecrafter.domain.tag.model.Tag> tags;
 
     public enum NodeType {
         COURSE, MODULE, LECTURE, SECTION, TOPIC, SLIDE

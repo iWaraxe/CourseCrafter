@@ -1,6 +1,6 @@
-package com.coherentsolutions.coursecrafter.repo;
+package com.coherentsolutions.coursecrafter.domain.version.repository;
 
-import com.coherentsolutions.coursecrafter.model.ContentVersion;
+import com.coherentsolutions.coursecrafter.domain.version.model.ContentVersion;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 

@@ -1,5 +1,6 @@
-package com.coherentsolutions.coursecrafter.model;
+package com.coherentsolutions.coursecrafter.domain.version.model;
 
+import com.coherentsolutions.coursecrafter.domain.content.model.ContentNode;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;

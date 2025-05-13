@@ -1,7 +1,7 @@
-package com.coherentsolutions.coursecrafter.controller;
+package com.coherentsolutions.coursecrafter.presentation.controller;
 
 import com.coherentsolutions.coursecrafter.presentation.dto.content.CourseUpdateRequest;
-import com.coherentsolutions.coursecrafter.model.CourseContent;
+import com.coherentsolutions.coursecrafter.domain.legacy.model.CourseContent;
 import com.coherentsolutions.coursecrafter.domain.content.service.ContentHierarchyService;
 import com.coherentsolutions.coursecrafter.application.service.EnhancedTextIngestionService;
 import lombok.RequiredArgsConstructor;

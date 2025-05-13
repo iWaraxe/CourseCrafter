@@ -1,9 +1,9 @@
 package com.coherentsolutions.coursecrafter.domain.content.service;
 
-import com.coherentsolutions.coursecrafter.model.ContentNode;
-import com.coherentsolutions.coursecrafter.model.ContentVersion;
-import com.coherentsolutions.coursecrafter.repo.ContentNodeRepository;
-import com.coherentsolutions.coursecrafter.repo.ContentVersionRepository;
+import com.coherentsolutions.coursecrafter.domain.content.model.ContentNode;
+import com.coherentsolutions.coursecrafter.domain.version.model.ContentVersion;
+import com.coherentsolutions.coursecrafter.domain.content.repository.ContentNodeRepository;
+import com.coherentsolutions.coursecrafter.domain.version.repository.ContentVersionRepository;
 import com.coherentsolutions.coursecrafter.infrastructure.git.GitCliService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;

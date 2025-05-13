@@ -1,6 +1,6 @@
-package com.coherentsolutions.coursecrafter.repo;
+package com.coherentsolutions.coursecrafter.domain.legacy.repository;
 
-import com.coherentsolutions.coursecrafter.model.CourseContent;
+import com.coherentsolutions.coursecrafter.domain.legacy.model.CourseContent;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 

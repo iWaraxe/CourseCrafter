@@ -1,9 +1,9 @@
 package com.coherentsolutions.coursecrafter.domain.slide.service;
 
-import com.coherentsolutions.coursecrafter.model.ContentNode;
-import com.coherentsolutions.coursecrafter.model.SlideComponent;
-import com.coherentsolutions.coursecrafter.repo.ContentNodeRepository;
-import com.coherentsolutions.coursecrafter.repo.SlideComponentRepository;
+import com.coherentsolutions.coursecrafter.domain.content.model.ContentNode;
+import com.coherentsolutions.coursecrafter.domain.slide.model.SlideComponent;
+import com.coherentsolutions.coursecrafter.domain.content.repository.ContentNodeRepository;
+import com.coherentsolutions.coursecrafter.domain.slide.repository.SlideComponentRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

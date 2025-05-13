@@ -32,3 +32,12 @@ git:
     defaultBranch: main
   auth:
     githubToken: ${GITHUB_PAT}   # read from env-var
+
+# Database Import Configuration
+coursecrafter:
+  import:
+    # Enable/disable database import functionality
+    # Set to true to perform the first-time import of lecture content
+    enabled: false
+    # Override default import folder location (optional)
+    folder: course_content

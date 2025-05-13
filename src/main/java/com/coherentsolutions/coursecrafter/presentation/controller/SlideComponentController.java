@@ -1,8 +1,8 @@
-package com.coherentsolutions.coursecrafter.controller;
+package com.coherentsolutions.coursecrafter.presentation.controller;
 
 import com.coherentsolutions.coursecrafter.presentation.dto.slide.ComponentCreateRequest;
 import com.coherentsolutions.coursecrafter.presentation.dto.slide.ComponentUpdateRequest;
-import com.coherentsolutions.coursecrafter.model.SlideComponent;
+import com.coherentsolutions.coursecrafter.domain.slide.model.SlideComponent;
 import com.coherentsolutions.coursecrafter.domain.slide.service.SlideComponentService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;

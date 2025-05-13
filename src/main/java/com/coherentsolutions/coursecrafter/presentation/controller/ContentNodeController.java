@@ -1,9 +1,9 @@
-package com.coherentsolutions.coursecrafter.controller;
+package com.coherentsolutions.coursecrafter.presentation.controller;
 
 import com.coherentsolutions.coursecrafter.presentation.dto.content.ContentCreateRequest;
 import com.coherentsolutions.coursecrafter.presentation.dto.content.ContentTreeDto;
 import com.coherentsolutions.coursecrafter.presentation.dto.content.ContentUpdateRequest;
-import com.coherentsolutions.coursecrafter.model.ContentNode;
+import com.coherentsolutions.coursecrafter.domain.content.model.ContentNode;
 import com.coherentsolutions.coursecrafter.domain.content.service.ContentHierarchyService;
 import com.coherentsolutions.coursecrafter.domain.content.service.ContentNodeService;
 import lombok.RequiredArgsConstructor;

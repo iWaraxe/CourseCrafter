@@ -1,12 +1,12 @@
-package com.coherentsolutions.coursecrafter.service;
+package com.coherentsolutions.coursecrafter.infrastructure.migration;
 
-import com.coherentsolutions.coursecrafter.model.ContentNode;
-import com.coherentsolutions.coursecrafter.model.ContentVersion;
-import com.coherentsolutions.coursecrafter.model.CourseContent;
-import com.coherentsolutions.coursecrafter.repo.ContentNodeRepository;
-import com.coherentsolutions.coursecrafter.repo.ContentVersionRepository;
-import com.coherentsolutions.coursecrafter.repo.CourseContentRepository;
-import com.coherentsolutions.coursecrafter.repo.SlideComponentRepository;
+import com.coherentsolutions.coursecrafter.domain.content.model.ContentNode;
+import com.coherentsolutions.coursecrafter.domain.version.model.ContentVersion;
+import com.coherentsolutions.coursecrafter.domain.legacy.model.CourseContent;
+import com.coherentsolutions.coursecrafter.domain.content.repository.ContentNodeRepository;
+import com.coherentsolutions.coursecrafter.domain.version.repository.ContentVersionRepository;
+import com.coherentsolutions.coursecrafter.domain.legacy.repository.CourseContentRepository;
+import com.coherentsolutions.coursecrafter.domain.slide.repository.SlideComponentRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;

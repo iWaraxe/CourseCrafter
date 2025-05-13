@@ -1,4 +1,4 @@
-package com.coherentsolutions.coursecrafter.model;
+package com.coherentsolutions.coursecrafter.domain.legacy.model;
 // src/main/java/com/coherentsolutions/coursecrafter/model/CourseContent.java
 
 import jakarta.persistence.*;
