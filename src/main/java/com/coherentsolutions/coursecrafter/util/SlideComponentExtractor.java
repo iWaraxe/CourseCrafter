@@ -16,6 +16,7 @@ import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
+import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -75,46 +76,72 @@ public class SlideComponentExtractor implements CommandLineRunner {
         }
     }
 
+    @Transactional
     protected void processSlide(ContentNode slide) {
         if (slide.getVersions() == null || slide.getVersions().isEmpty()) {
             log.warn("Slide has no versions: {} (ID: {})", slide.getTitle(), slide.getId());
 
-            // Use AtomicReference to hold mutable state across the lambda
-            AtomicReference<String> fullContentRef = new AtomicReference<>("");
+            // This will hold our full slide content
+            String fullSlideContent = "";
+
+            // STEP 1: Try to find the original content in the markdown files
             try {
                 Path courseContentDir = Paths.get("course_content");
-                String slideTitle = slide.getTitle();
+                final String slideTitle = slide.getTitle();
 
-                Files.list(courseContentDir)
-                        .filter(path -> path.toString().endsWith(".md"))
-                        .forEach(path -> {
-                            try {
-                                String content = Files.readString(path);
-                                Matcher slideMatcher = MarkdownPatterns.SLIDE_PATTERN.matcher(content);
-                                while (slideMatcher.find()) {
-                                    String seqNumber = slideMatcher.group(1).trim();
-                                    String foundTitle = slideMatcher.group(2).trim();
-                                    String slideContent = slideMatcher.group(3).trim();
+                if (Files.exists(courseContentDir)) {
+                    // Use DirectoryStream instead of Files.list to avoid lambda issues
+                    try (DirectoryStream<Path> stream = Files.newDirectoryStream(courseContentDir, "*.md")) {
+                        for (Path path : stream) {
+                            String fileContent = Files.readString(path);
 
-                                    if (foundTitle.equals(slideTitle)) {
-                                        fullContentRef.set(slideContent);
-                                    }
+                            // Look for slides with matching title
+                            Matcher slideMatcher = MarkdownPatterns.SLIDE_PATTERN.matcher(fileContent);
+                            while (slideMatcher.find()) {
+                                String foundTitle = slideMatcher.group(2).trim();
+
+                                // If title matches, grab the full content
+                                if (foundTitle.equals(slideTitle)) {
+                                    fullSlideContent = slideMatcher.group(3).trim();
+                                    log.debug("Found original content for slide '{}' in file {}",
+                                            slideTitle, path.getFileName());
+                                    break;
                                 }
-                            } catch (IOException e) {
-                                log.error("Error reading markdown file", e);
                             }
-                        });
+
+                            // If content found, no need to check more files
+                            if (!fullSlideContent.isEmpty()) {
+                                break;
+                            }
+                        }
+                    }
+                }
             } catch (Exception e) {
-                log.error("Failed to find original slide content", e);
+                log.error("Error finding original slide content: {}", e.getMessage());
             }
 
-            // Get the content from the reference
-            String versionContent = fullContentRef.get().isEmpty() ?
-                    slide.getTitle() : fullContentRef.get();
+            // STEP 2: If no content found, create a complete template with all component sections
+            if (fullSlideContent.isEmpty()) {
+                log.info("Creating template content for slide: {}", slide.getTitle());
+                fullSlideContent = String.format("""
+                ###### SCRIPT
+                This is a template script for slide: %s
+                
+                ###### VISUAL
+                This is a template visual content.
+                
+                ###### NOTES
+                These are template notes.
+                
+                ###### DEMONSTRATION
+                This is a template demonstration.
+                """, slide.getTitle());
+            }
 
+            // Create the version with our full content
             ContentVersion defaultVersion = ContentVersion.builder()
                     .node(slide)
-                    .content(versionContent)
+                    .content(fullSlideContent)
                     .contentFormat("MARKDOWN")
                     .versionNumber(1)
                     .createdAt(LocalDateTime.now())
@@ -125,7 +152,6 @@ public class SlideComponentExtractor implements CommandLineRunner {
                 contentVersionRepository.save(defaultVersion);
 
                 // Refresh the slide to include the new version
-                // This is important within the transaction
                 contentNodeRepository.findById(slide.getId())
                         .ifPresent(refreshedSlide -> {
                             slide.setVersions(refreshedSlide.getVersions());
@@ -137,34 +163,33 @@ public class SlideComponentExtractor implements CommandLineRunner {
             }
         }
 
-        // Determine component type based on slide title
-        // Get content from the latest version
+        // Now process components from the slide's latest version content
         String slideContent = slide.getVersions().stream()
                 .max((v1, v2) -> v1.getVersionNumber().compareTo(v2.getVersionNumber()))
                 .map(ContentVersion::getContent)
                 .orElse("");
 
-
-        // Debug slide components
-        log.debug("Processing slide content for '{}': [Content length: {}]",
+        // Add detailed debugging to see what's happening
+        log.debug("Processing slide content for '{}' [Length: {}]",
                 slide.getTitle(), slideContent.length());
 
-        log.debug("Processing slide content (length: {}): \n{}",
-                slideContent.length(),
-                slideContent.length() > 500 ? slideContent.substring(0, 500) + "..." : slideContent);
+        if (slideContent.length() > 300) {
+            log.debug("Content excerpt: {}...", slideContent.substring(0, 300));
+        } else {
+            log.debug("Full content: {}", slideContent);
+        }
 
-
-        // Define pattern to match component sections (level 6 headers)
-        Matcher matcher = MarkdownPatterns.COMPONENT_PATTERN.matcher(slideContent);
-
-        // Add a counter for components
+        // Look for components in the slide content
+        Matcher componentMatcher = MarkdownPatterns.COMPONENT_PATTERN.matcher(slideContent);
         int componentCount = 0;
 
-        // Process each component found
-        while (matcher.find()) {
+        while (componentMatcher.find()) {
             componentCount++;
-            String componentTypeStr = matcher.group(1).trim();
-            String componentContent = matcher.group(2).trim();
+            String componentTypeStr = componentMatcher.group(1).trim();
+            String componentContent = componentMatcher.group(2).trim();
+
+            log.debug("Found component of type {} with content length: {}",
+                    componentTypeStr, componentContent.length());
 
             // Map the header text directly to enum
             SlideComponent.ComponentType componentType;
@@ -188,43 +213,11 @@ public class SlideComponentExtractor implements CommandLineRunner {
                         componentTypeStr, slide.getTitle(), e.getMessage());
             }
         }
-        // Add debug logging after all components are processed
-        log.debug("Found {} components in slide '{}'", componentCount, slide.getTitle());
-    }
 
-    private String extractVisualContent(String content) {
-        // Try to extract table content (Markdown tables)
-        Matcher tableMatcher = MarkdownPatterns.TABLE_PATTERN.matcher(content);
-
-        StringBuilder tableContent = new StringBuilder();
-        boolean foundTable = false;
-
-        while (tableMatcher.find()) {
-            tableContent.append(tableMatcher.group(0)).append("\n");
-            foundTable = true;
+        if (componentCount == 0) {
+            log.warn("No components found in slide: {}", slide.getTitle());
+        } else {
+            log.info("Found and processed {} components in slide: {}", componentCount, slide.getTitle());
         }
-
-        if (foundTable) {
-            return tableContent.toString();
-        }
-
-        // If no table, look for formatted text with asterisks or bullets
-        Pattern formattedPattern = Pattern.compile("\\*\\*.+?\\*\\*|\\*[^*].+?\\*|\\- .+", Pattern.MULTILINE);
-        Matcher formattedMatcher = formattedPattern.matcher(content);
-
-        StringBuilder formattedContent = new StringBuilder();
-        boolean foundFormatted = false;
-
-        while (formattedMatcher.find()) {
-            formattedContent.append(formattedMatcher.group(0)).append("\n");
-            foundFormatted = true;
-        }
-
-        if (foundFormatted) {
-            return formattedContent.toString();
-        }
-
-        // If nothing specific found, return original content
-        return content;
     }
 }
