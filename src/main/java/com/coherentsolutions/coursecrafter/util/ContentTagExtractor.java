@@ -87,6 +87,7 @@ public class ContentTagExtractor implements CommandLineRunner {
     );
 
     @Override
+    @Transactional
     public void run(String... args) throws Exception {
         // Skip if tags already exist
         if (tagRepository.count() > 0) {

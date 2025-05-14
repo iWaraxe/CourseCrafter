@@ -108,9 +108,14 @@ public class SlideComponentExtractor implements CommandLineRunner {
                 .orElse("");
 
 
-        // In SlideComponentExtractor.processSlide()
+        // Debug slide components
         log.debug("Processing slide content for '{}': [Content length: {}]",
                 slide.getTitle(), slideContent.length());
+
+        log.debug("Processing slide content (length: {}): \n{}",
+                slideContent.length(),
+                slideContent.length() > 500 ? slideContent.substring(0, 500) + "..." : slideContent);
+
 
         // Define pattern to match component sections (level 6 headers)
         Matcher matcher = MarkdownPatterns.COMPONENT_PATTERN.matcher(slideContent);

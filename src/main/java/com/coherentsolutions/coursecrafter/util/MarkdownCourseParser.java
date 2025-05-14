@@ -243,6 +243,10 @@ public class MarkdownCourseParser {
             String slideTitle = slideMatcher.group(2).trim();
             String slideContent = slideMatcher.group(3).trim();
 
+            log.debug("Extracted slide content for slide '{}' (length: {}):\n{}",
+                    slideTitle, slideContent.length(),
+                    slideContent.length() > 300 ? slideContent.substring(0, 300) + "..." : slideContent);
+
             // Convert sequence number to display order
             int displayOrder;
             try {
