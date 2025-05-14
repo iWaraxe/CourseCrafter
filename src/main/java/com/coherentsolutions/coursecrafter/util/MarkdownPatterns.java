@@ -13,13 +13,16 @@ public final class MarkdownPatterns {
     public static final Pattern LECTURE_PATTERN = Pattern.compile("^## ([^\\n]+)", Pattern.MULTILINE);
     public static final Pattern SECTION_PATTERN = Pattern.compile("^### ([^\\n]+)", Pattern.MULTILINE);
     public static final Pattern TOPIC_PATTERN = Pattern.compile("^#### ([^\\n]+)", Pattern.MULTILINE);
-    public static final Pattern SLIDE_PATTERN = Pattern.compile("^##### \\[seq:(\\d+)\\] ([^\\n]+)\\n([\\s\\S]*?)(?=^##### |$)",
-            Pattern.MULTILINE);
+    public static final Pattern SLIDE_PATTERN = Pattern.compile(
+            "##### \\[seq:(\\d+)\\] ([^\\n]+)\\s+(.*?)(?=##### |$)",
+            Pattern.DOTALL | Pattern.MULTILINE
+    );
 
     // Component patterns
     public static final Pattern COMPONENT_PATTERN = Pattern.compile(
-            "###### (SCRIPT|VISUAL|NOTES|DEMONSTRATION)(\\s*:?\\s*)\n(.*?)(?=###### |$)",
-            Pattern.DOTALL);
+            "###### (SCRIPT|VISUAL|NOTES|DEMONSTRATION)\\s*(.*?)(?=###### |$)",
+            Pattern.DOTALL
+    );
 
     // Table structure pattern
     public static final Pattern TABLE_PATTERN = Pattern.compile("\\|(.+?)\\|", Pattern.DOTALL);
