@@ -41,6 +41,7 @@ public class SlideComponentExtractor implements CommandLineRunner {
     private Boolean databaseImportEnabled;
 
     @Override
+    @Transactional
     public void run(String... args) throws Exception {
         // Skip if import is disabled
         if (databaseImportEnabled != null && !databaseImportEnabled) {
@@ -106,14 +107,20 @@ public class SlideComponentExtractor implements CommandLineRunner {
                 .map(ContentVersion::getContent)
                 .orElse("");
 
-        // Define pattern to match component sections (level 6 headers)
-        Pattern componentPattern = Pattern.compile("^#{6}\\s+(SCRIPT|VISUAL|NOTES|DEMONSTRATION)\\s*$(.*?)(?=^#{6}|^-{3,}|$)",
-                Pattern.DOTALL | Pattern.MULTILINE);
 
-        Matcher matcher = componentPattern.matcher(slideContent);
+        // In SlideComponentExtractor.processSlide()
+        log.debug("Processing slide content for '{}': [Content length: {}]",
+                slide.getTitle(), slideContent.length());
+
+        // Define pattern to match component sections (level 6 headers)
+        Matcher matcher = MarkdownPatterns.COMPONENT_PATTERN.matcher(slideContent);
+
+        // Add a counter for components
+        int componentCount = 0;
 
         // Process each component found
         while (matcher.find()) {
+            componentCount++;
             String componentTypeStr = matcher.group(1).trim();
             String componentContent = matcher.group(2).trim();
 
@@ -139,12 +146,13 @@ public class SlideComponentExtractor implements CommandLineRunner {
                         componentTypeStr, slide.getTitle(), e.getMessage());
             }
         }
+        // Add debug logging after all components are processed
+        log.debug("Found {} components in slide '{}'", componentCount, slide.getTitle());
     }
 
     private String extractVisualContent(String content) {
         // Try to extract table content (Markdown tables)
-        Pattern tablePattern = Pattern.compile("\\|(.+?)\\|", Pattern.DOTALL);
-        Matcher tableMatcher = tablePattern.matcher(content);
+        Matcher tableMatcher = MarkdownPatterns.TABLE_PATTERN.matcher(content);
 
         StringBuilder tableContent = new StringBuilder();
         boolean foundTable = false;

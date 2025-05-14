@@ -3,6 +3,7 @@ package com.coherentsolutions.coursecrafter.util;
 import com.coherentsolutions.coursecrafter.domain.content.model.ContentNode;
 import com.coherentsolutions.coursecrafter.domain.content.repository.ContentNodeRepository;
 import com.coherentsolutions.coursecrafter.domain.content.service.ContentNodeService;
+import com.coherentsolutions.coursecrafter.domain.slide.model.SlideComponent;
 import com.coherentsolutions.coursecrafter.domain.slide.service.SlideComponentService;
 import com.coherentsolutions.coursecrafter.domain.version.repository.ContentVersionRepository;
 import lombok.RequiredArgsConstructor;
@@ -46,6 +47,18 @@ public class DatabasePopulationScript implements CommandLineRunner {
     @Value("${coursecrafter.import.folder:src/main/resources/course_content}")
     private String markdownFilesDir;
 
+    // Filename pattern for lecture files - not included in MarkdownPatterns as it's specific to this class
+    private static final Pattern LECTURE_FILENAME_PATTERN = Pattern.compile("Lecture (\\d+)[-\\s.]+(.*?)\\.md");
+
+    // Numbered section pattern - extends the base SECTION_PATTERN
+    private static final Pattern NUMBERED_SECTION_PATTERN = Pattern.compile("### (\\d+)\\. (.+?)\\n");
+
+    // Numbered topic pattern - extends the base TOPIC_PATTERN
+    private static final Pattern NUMBERED_TOPIC_PATTERN = Pattern.compile("#### (\\d+)\\.(\\d+)\\. (.+?)\\n");
+
+    // First section marker for extracting introduction content
+    private static final Pattern FIRST_SECTION_PATTERN = Pattern.compile("### 1\\.");
+
     @Override
     public void run(String... args) throws Exception {
         // Skip if import is disabled
@@ -53,7 +66,6 @@ public class DatabasePopulationScript implements CommandLineRunner {
             log.info("Database import is disabled. Skipping population script.");
             return;
         }
-
 
         log.info("Starting to populate database with course content from markdown files...");
 
@@ -132,8 +144,7 @@ public class DatabasePopulationScript implements CommandLineRunner {
         String fileContent = Files.readString(filePath);
 
         // Extract lecture number and title from filename
-        Pattern lecturePattern = Pattern.compile("Lecture (\\d+)[-\\s.]+(.*?)\\.md");
-        Matcher lectureMatcher = lecturePattern.matcher(fileName);
+        Matcher lectureMatcher = LECTURE_FILENAME_PATTERN.matcher(fileName);
 
         if (lectureMatcher.find()) {
             String lectureNumber = lectureMatcher.group(1);
@@ -168,9 +179,8 @@ public class DatabasePopulationScript implements CommandLineRunner {
     }
 
     private void processSections(String content, ContentNode lectureNode, String lectureNumber) throws IOException, InterruptedException {
-        // Find all sections (level 2 headers in markdown)
-        Pattern sectionPattern = Pattern.compile("### (\\d+)\\. (.+?)\\n");
-        Matcher sectionMatcher = sectionPattern.matcher(content);
+        // Find all sections with numbered headers (### 1. Section Title)
+        Matcher sectionMatcher = NUMBERED_SECTION_PATTERN.matcher(content);
 
         int sectionOrder = 1;
 
@@ -183,7 +193,7 @@ public class DatabasePopulationScript implements CommandLineRunner {
             int sectionEnd;
 
             // Find the next section or end of file
-            Matcher nextSection = sectionPattern.matcher(content.substring(sectionStart));
+            Matcher nextSection = NUMBERED_SECTION_PATTERN.matcher(content.substring(sectionStart));
             if (nextSection.find()) {
                 sectionEnd = sectionStart + nextSection.start() - 1;
             } else {
@@ -219,9 +229,8 @@ public class DatabasePopulationScript implements CommandLineRunner {
     }
 
     private void processSubsections(String content, ContentNode sectionNode, String lectureNumber, String sectionNumber) throws IOException, InterruptedException {
-        // Find all subsections (level 3 headers in markdown)
-        Pattern subsectionPattern = Pattern.compile("#### (\\d+)\\.(\\d+)\\. (.+?)\\n");
-        Matcher subsectionMatcher = subsectionPattern.matcher(content);
+        // Find all subsections with hierarchical numbering (#### 1.1. Topic Title)
+        Matcher subsectionMatcher = NUMBERED_TOPIC_PATTERN.matcher(content);
 
         int subsectionOrder = 1;
 
@@ -240,7 +249,7 @@ public class DatabasePopulationScript implements CommandLineRunner {
             int subsectionEnd;
 
             // Find the next subsection or end of section
-            Matcher nextSubsection = subsectionPattern.matcher(content.substring(subsectionStart));
+            Matcher nextSubsection = NUMBERED_TOPIC_PATTERN.matcher(content.substring(subsectionStart));
             if (nextSubsection.find()) {
                 subsectionEnd = subsectionStart + nextSubsection.start() - 1;
             } else {
@@ -268,7 +277,7 @@ public class DatabasePopulationScript implements CommandLineRunner {
 
             log.info("Created topic node: {}", topicNode.getTitle());
 
-            // Process slides - looking for components like "Script", "Slide", "Demo"
+            // Process slides - using the centralized pattern
             processSlides(subsectionContent, topicNode, lectureNumber, majorNumber, minorNumber);
 
             subsectionOrder++;
@@ -276,46 +285,92 @@ public class DatabasePopulationScript implements CommandLineRunner {
     }
 
     private void processSlides(String content, ContentNode topicNode, String lectureNumber, String sectionNumber, String topicNumber) throws IOException, InterruptedException {
-        // Extract slides and components - look for script, slide, demo components
-        String[] slideTypes = {"Script", "Slide", "Demo", "Demonstration", "Instructions"};
+        // Use centralized SLIDE_PATTERN for slide detection
+        Matcher slideMatcher = MarkdownPatterns.SLIDE_PATTERN.matcher(content);
 
-        for (String slideType : slideTypes) {
-            Pattern pattern = Pattern.compile("\\*\\*" + slideType + "(?::|\\*\\*)(.+?)(?:\\*\\*|$)",
-                    Pattern.DOTALL | Pattern.CASE_INSENSITIVE);
-            Matcher matcher = pattern.matcher(content);
+        while (slideMatcher.find()) {
+            String seqNumber = slideMatcher.group(1).trim();
+            String slideTitle = slideMatcher.group(2).trim();
+            String slideContent = slideMatcher.group(3).trim();
 
-            int slideOrder = 1;
+            // Convert sequence number to display order
+            int displayOrder;
+            try {
+                displayOrder = Integer.parseInt(seqNumber);
+            } catch (NumberFormatException e) {
+                log.warn("Invalid sequence number: {} for slide: {}, using default", seqNumber, slideTitle);
+                displayOrder = 100; // Default value if parsing fails
+            }
 
-            while (matcher.find()) {
-                String slideContent = matcher.group(1).trim();
+            // Create slide node with sequence-based ordering
+            ContentNode slideNode = ContentNode.builder()
+                    .parent(topicNode)
+                    .nodeType(ContentNode.NodeType.SLIDE)
+                    .title(slideTitle)
+                    .description("Slide " + seqNumber + " for Topic " + sectionNumber + "." + topicNumber)
+                    .nodeNumber(lectureNumber + "." + sectionNumber + "." + topicNumber + "." + seqNumber)
+                    .displayOrder(displayOrder)
+                    .path(topicNode.getPath() + "/Slide/" + seqNumber)
+                    .createdAt(LocalDateTime.now())
+                    .updatedAt(LocalDateTime.now())
+                    .build();
 
-                // Create a slide for each component
-                ContentNode slideNode = ContentNode.builder()
-                        .parent(topicNode)
-                        .nodeType(ContentNode.NodeType.SLIDE)
-                        .title(slideType + " " + slideOrder)
-                        .description(slideType + " for Topic " + sectionNumber + "." + topicNumber)
-                        .nodeNumber(lectureNumber + "." + sectionNumber + "." + topicNumber + "." + slideOrder)
-                        .displayOrder(slideOrder * 10)
-                        .path(topicNode.getPath() + "/Slide/" + slideType.toLowerCase() + "-" + slideOrder)
-                        .createdAt(LocalDateTime.now())
-                        .updatedAt(LocalDateTime.now())
-                        .build();
+            slideNode = contentNodeService.createNode(slideNode, slideContent,
+                    "Created slide: " + slideTitle + " with sequence " + seqNumber);
 
-                slideNode = contentNodeService.createNode(slideNode, slideContent,
-                        "Initial import of " + slideType + " " + slideOrder + " in Topic " + sectionNumber + "." + topicNumber);
+            log.info("Created slide: {} with sequence {}", slideTitle, seqNumber);
 
-                log.info("Created slide node for {}: {}", slideType, slideNode.getTitle());
+            // Process components within this slide
+            processSlideComponents(slideContent, slideNode);
+        }
+    }
 
-                slideOrder++;
+    /**
+     * Process components within a slide
+     */
+    private void processSlideComponents(String slideContent, ContentNode slideNode) {
+        // Use centralized COMPONENT_PATTERN for component detection
+        Matcher componentMatcher = MarkdownPatterns.COMPONENT_PATTERN.matcher(slideContent);
+
+        // Track how many components we find for debugging
+        int componentCount = 0;
+
+        while (componentMatcher.find()) {
+            componentCount++;
+
+            String componentTypeStr = componentMatcher.group(1).trim();
+            String componentContent = componentMatcher.group(2).trim();
+
+            // Convert string to enum
+            SlideComponent.ComponentType componentType;
+            try {
+                componentType = SlideComponent.ComponentType.valueOf(componentTypeStr);
+            } catch (IllegalArgumentException e) {
+                log.warn("Unknown component type: {} in slide: {}", componentTypeStr, slideNode.getTitle());
+                continue;
+            }
+
+            try {
+                // Create component using the service
+                SlideComponent component = slideComponentService.createComponent(
+                        slideNode.getId(),
+                        componentType,
+                        componentContent
+                );
+
+                log.info("Created {} component for slide: {}", componentType, slideNode.getTitle());
+            } catch (Exception e) {
+                log.error("Failed to create component {} for slide {}: {}",
+                        componentTypeStr, slideNode.getTitle(), e.getMessage());
             }
         }
+
+        log.debug("Found {} components in slide '{}'", componentCount, slideNode.getTitle());
     }
 
     private String getIntroductionContent(String content) {
         // Extract the introduction part - everything before the first section
-        Pattern sectionPattern = Pattern.compile("### 1\\.");
-        Matcher matcher = sectionPattern.matcher(content);
+        Matcher matcher = FIRST_SECTION_PATTERN.matcher(content);
 
         if (matcher.find()) {
             return content.substring(0, matcher.start()).trim();

@@ -26,16 +26,6 @@ public class MarkdownCourseParser {
     private final ContentNodeService contentNodeService;
     private final SlideComponentService slideComponentService;
 
-    // Constants for parsing
-    private static final Pattern COURSE_PATTERN = Pattern.compile("^# ([^\\n]+)", Pattern.MULTILINE);
-    private static final Pattern LECTURE_PATTERN = Pattern.compile("^## ([^\\n]+)", Pattern.MULTILINE);
-    private static final Pattern SECTION_PATTERN = Pattern.compile("^### ([^\\n]+)", Pattern.MULTILINE);
-    private static final Pattern TOPIC_PATTERN = Pattern.compile("^#### ([^\\n]+)", Pattern.MULTILINE);
-    private static final Pattern SLIDE_PATTERN = Pattern.compile("^##### \\[seq:(\\d+)\\] ([^\\n]+)([\\s\\S]*?)(?=^---$|^##### |$)",
-            Pattern.MULTILINE);
-    private static final Pattern COMPONENT_PATTERN = Pattern.compile("^###### ([A-Z]+)\\s*([\\s\\S]*?)(?=^###### |^---$|^##### |$)",
-            Pattern.MULTILINE);
-
     /**
      * Parse a markdown file and create the entire course hierarchy
      */
@@ -58,7 +48,7 @@ public class MarkdownCourseParser {
      * Parse the course level (h1)
      */
     private ContentNode parseCourse(String content) throws IOException, InterruptedException {
-        Matcher courseMatcher = COURSE_PATTERN.matcher(content);
+        Matcher courseMatcher = MarkdownPatterns.COURSE_PATTERN.matcher(content);
         if (!courseMatcher.find()) {
             return null;
         }
@@ -84,7 +74,7 @@ public class MarkdownCourseParser {
      * Parse lectures (h2) under the course
      */
     private void parseLectures(String content, ContentNode courseNode) throws IOException, InterruptedException {
-        Matcher lectureMatcher = LECTURE_PATTERN.matcher(content);
+        Matcher lectureMatcher = MarkdownPatterns.LECTURE_PATTERN.matcher(content);
         int lectureOrder = 10; // Start at 10 to leave room
 
         while (lectureMatcher.find()) {
@@ -102,7 +92,7 @@ public class MarkdownCourseParser {
                 lectureMatcher.region(lectureEnd, content.length());
             } else {
                 // Reset matcher to continue from where we left off
-                lectureMatcher = LECTURE_PATTERN.matcher(content);
+                lectureMatcher = MarkdownPatterns.LECTURE_PATTERN.matcher(content);
                 lectureMatcher.region(lectureStart + 1, content.length());
             }
 
@@ -139,7 +129,7 @@ public class MarkdownCourseParser {
      * Parse sections (h3) under a lecture
      */
     private void parseSections(String content, ContentNode lectureNode) throws IOException, InterruptedException {
-        Matcher sectionMatcher = SECTION_PATTERN.matcher(content);
+        Matcher sectionMatcher = MarkdownPatterns.SECTION_PATTERN.matcher(content);
         int sectionOrder = 10;
 
         while (sectionMatcher.find()) {
@@ -157,7 +147,7 @@ public class MarkdownCourseParser {
                 sectionMatcher.region(sectionEnd, content.length());
             } else {
                 // Reset matcher to continue from where we left off
-                sectionMatcher = SECTION_PATTERN.matcher(content);
+                sectionMatcher = MarkdownPatterns.SECTION_PATTERN.matcher(content);
                 sectionMatcher.region(sectionStart + 1, content.length());
             }
 
@@ -194,7 +184,7 @@ public class MarkdownCourseParser {
      * Parse topics (h4) under a section
      */
     private void parseTopics(String content, ContentNode sectionNode) throws IOException, InterruptedException {
-        Matcher topicMatcher = TOPIC_PATTERN.matcher(content);
+        Matcher topicMatcher = MarkdownPatterns.TOPIC_PATTERN.matcher(content);
         int topicOrder = 10;
 
         while (topicMatcher.find()) {
@@ -212,7 +202,7 @@ public class MarkdownCourseParser {
                 topicMatcher.region(topicEnd, content.length());
             } else {
                 // Reset matcher to continue from where we left off
-                topicMatcher = TOPIC_PATTERN.matcher(content);
+                topicMatcher = MarkdownPatterns.TOPIC_PATTERN.matcher(content);
                 topicMatcher.region(topicStart + 1, content.length());
             }
 
@@ -246,7 +236,7 @@ public class MarkdownCourseParser {
      * Parse slides (h5) with sequence numbers under any parent node
      */
     private void parseSlides(String content, ContentNode parentNode) throws IOException, InterruptedException {
-        Matcher slideMatcher = SLIDE_PATTERN.matcher(content);
+        Matcher slideMatcher = MarkdownPatterns.SLIDE_PATTERN.matcher(content);
 
         while (slideMatcher.find()) {
             String seqNumber = slideMatcher.group(1).trim();
@@ -287,11 +277,8 @@ public class MarkdownCourseParser {
      * Parse slide components (h6) under a slide node
      */
     private void parseSlideComponents(String content, ContentNode slideNode) {
-        // Define pattern to match component sections (level 6 headers)
-        Pattern componentPattern = Pattern.compile("^#{6}\\s+(SCRIPT|VISUAL|NOTES|DEMONSTRATION)\\s*$(.*?)(?=^#{6}|^-{3,}|$)",
-                Pattern.DOTALL | Pattern.MULTILINE);
-
-        Matcher matcher = componentPattern.matcher(content);
+        // Updated pattern with optional spaces and formatting
+        Matcher matcher = MarkdownPatterns.COMPONENT_PATTERN.matcher(content);
 
         // Process each component found
         while (matcher.find()) {
