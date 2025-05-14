@@ -3,12 +3,14 @@ package com.coherentsolutions.coursecrafter.domain.slide.service;
 import com.coherentsolutions.coursecrafter.domain.content.model.ContentNode;
 import com.coherentsolutions.coursecrafter.domain.content.repository.ContentNodeRepository;
 import jakarta.persistence.EntityNotFoundException;
+import lombok.RequiredArgsConstructor;
 
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+@RequiredArgsConstructor
 public class SlideService {
     private final ContentNodeRepository contentNodeRepository;
 
