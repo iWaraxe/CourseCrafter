@@ -138,6 +138,30 @@ public class SlideComponentExtractor implements CommandLineRunner {
                 """, slide.getTitle());
             }
 
+            // After creating the version content
+            log.debug("Full template content created: \n{}", fullSlideContent);
+
+            // When processing component matcher
+            String slideContent = slide.getVersions().stream()
+                    .max((v1, v2) -> v1.getVersionNumber().compareTo(v2.getVersionNumber()))
+                    .map(ContentVersion::getContent)
+                    .orElse("");
+
+            log.debug("Content being searched for components:\n{}", slideContent);
+            log.debug("Using regex pattern: {}", MarkdownPatterns.COMPONENT_PATTERN.pattern());
+
+            // Test the pattern explicitly
+            Matcher testMatcher = MarkdownPatterns.COMPONENT_PATTERN.matcher(slideContent);
+            int matchCount = 0;
+            while (testMatcher.find()) {
+                matchCount++;
+                log.debug("MATCH #{}: Type={}, Content starts with: {}",
+                        matchCount,
+                        testMatcher.group(1),
+                        testMatcher.group(3).substring(0, Math.min(20, testMatcher.group(3).length())) + "...");
+            }
+            log.debug("TOTAL MATCHES: {}", matchCount);
+
             // Create the version with our full content
             ContentVersion defaultVersion = ContentVersion.builder()
                     .node(slide)

@@ -18,7 +18,7 @@ public final class MarkdownPatterns {
 
     // Component patterns
     public static final Pattern COMPONENT_PATTERN = Pattern.compile(
-            "#{6}\\s+(SCRIPT|VISUAL|NOTES|DEMONSTRATION)\\s*:?\\s*[\\r\\n]+(.*?)(?=#{6}|$)",
+            "###### (SCRIPT|VISUAL|NOTES|DEMONSTRATION)(\\s*:?\\s*)\n(.*?)(?=###### |$)",
             Pattern.DOTALL);
 
     // Table structure pattern
