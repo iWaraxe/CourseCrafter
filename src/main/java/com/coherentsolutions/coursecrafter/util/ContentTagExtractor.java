@@ -23,7 +23,7 @@ import java.util.regex.Pattern;
 @Component
 @RequiredArgsConstructor
 @Slf4j
-@Order(3) // Run after slide component extraction
+@Order(4) // Run after slide component extraction
 public class ContentTagExtractor implements CommandLineRunner {
 
     private final ContentNodeRepository contentNodeRepository;

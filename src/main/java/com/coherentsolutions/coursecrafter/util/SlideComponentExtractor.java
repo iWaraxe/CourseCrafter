@@ -5,6 +5,8 @@ import com.coherentsolutions.coursecrafter.domain.content.repository.ContentNode
 import com.coherentsolutions.coursecrafter.domain.slide.model.SlideComponent;
 import com.coherentsolutions.coursecrafter.domain.slide.repository.SlideComponentRepository;
 import com.coherentsolutions.coursecrafter.domain.slide.service.SlideComponentService;
+import com.coherentsolutions.coursecrafter.domain.version.model.ContentVersion;
+import com.coherentsolutions.coursecrafter.domain.version.repository.ContentVersionRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -13,6 +15,7 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -31,6 +34,7 @@ public class SlideComponentExtractor implements CommandLineRunner {
     private final ContentNodeRepository contentNodeRepository;
     private final SlideComponentRepository slideComponentRepository;
     private final SlideComponentService slideComponentService;
+    private final ContentVersionRepository contentVersionRepository;
 
     // Inject a check for whether import is enabled
     @Autowired(required = false)
@@ -66,54 +70,75 @@ public class SlideComponentExtractor implements CommandLineRunner {
     }
 
     protected void processSlide(ContentNode slide) {
-        // Determine component type based on slide title
-        String slideTitle = slide.getTitle().toLowerCase();
-        SlideComponent.ComponentType componentType;
-
-        if (slideTitle.contains("script")) {
-            componentType = SlideComponent.ComponentType.SCRIPT;
-        } else if (slideTitle.contains("demo") || slideTitle.contains("demonstration") ||
-                slideTitle.contains("instructions")) {
-            componentType = SlideComponent.ComponentType.DEMONSTRATION;
-        } else if (slideTitle.contains("slide")) {
-            componentType = SlideComponent.ComponentType.VISUAL;
-        } else if (slideTitle.contains("note")) {
-            componentType = SlideComponent.ComponentType.NOTES;
-        } else {
-            // Default type if we can't determine
-            componentType = SlideComponent.ComponentType.NOTES;
-        }
-
-        // Get content from the slide's latest version if available
         if (slide.getVersions() == null || slide.getVersions().isEmpty()) {
-            log.warn("Slide has no versions: {}", slide.getTitle());
-            return;
+            log.warn("Slide has no versions: {} (ID: {})", slide.getTitle(), slide.getId());
+
+            // Create a default version for this slide
+            ContentVersion defaultVersion = ContentVersion.builder()
+                    .node(slide)
+                    .content(slide.getTitle())  // Use slide title as minimal content
+                    .contentFormat("MARKDOWN")
+                    .versionNumber(1)
+                    .createdAt(LocalDateTime.now())
+                    .build();
+
+            try {
+                // Save the new version
+                contentVersionRepository.save(defaultVersion);
+
+                // Refresh the slide to include the new version
+                // This is important within the transaction
+                contentNodeRepository.findById(slide.getId())
+                        .ifPresent(refreshedSlide -> {
+                            slide.setVersions(refreshedSlide.getVersions());
+                            log.info("Created default version for slide: {}", slide.getTitle());
+                        });
+            } catch (Exception e) {
+                log.error("Failed to create default version for slide {}: {}", slide.getId(), e.getMessage());
+                return;
+            }
         }
 
-        slide.getVersions().stream()
+        // Determine component type based on slide title
+        // Get content from the latest version
+        String slideContent = slide.getVersions().stream()
                 .max((v1, v2) -> v1.getVersionNumber().compareTo(v2.getVersionNumber()))
-                .ifPresent(latestVersion -> {
-                    String content = latestVersion.getContent();
+                .map(ContentVersion::getContent)
+                .orElse("");
 
-                    // Extract component-specific content
-                    if (componentType == SlideComponent.ComponentType.VISUAL) {
-                        // For visual slides, try to extract table content or formatted content
-                        content = extractVisualContent(content);
-                    }
+        // Define pattern to match component sections (level 6 headers)
+        Pattern componentPattern = Pattern.compile("^#{6}\\s+(SCRIPT|VISUAL|NOTES|DEMONSTRATION)\\s*$(.*?)(?=^#{6}|^-{3,}|$)",
+                Pattern.DOTALL | Pattern.MULTILINE);
 
-                    // Create the slide component
-                    try {
-                        SlideComponent component = slideComponentService.createComponent(
-                                slide.getId(),
-                                componentType,
-                                content
-                        );
+        Matcher matcher = componentPattern.matcher(slideContent);
 
-                        log.info("Created {} component for slide: {}", componentType, slide.getTitle());
-                    } catch (Exception e) {
-                        log.error("Failed to create component for slide {}: {}", slide.getTitle(), e.getMessage());
-                    }
-                });
+        // Process each component found
+        while (matcher.find()) {
+            String componentTypeStr = matcher.group(1).trim();
+            String componentContent = matcher.group(2).trim();
+
+            // Map the header text directly to enum
+            SlideComponent.ComponentType componentType;
+            try {
+                componentType = SlideComponent.ComponentType.valueOf(componentTypeStr);
+            } catch (IllegalArgumentException e) {
+                log.warn("Unknown component type '{}' in slide: {}", componentTypeStr, slide.getTitle());
+                continue;
+            }
+
+            try {
+                // Create the slide component
+                SlideComponent component = slideComponentService.createComponent(
+                        slide.getId(),
+                        componentType,
+                        componentContent
+                );
+                log.info("Created {} component for slide: {}", componentType, slide.getTitle());
+            } catch (Exception e) {
+                log.error("Failed to create component {} for slide {}: {}",
+                        componentTypeStr, slide.getTitle(), e.getMessage());
+            }
+        }
     }
 
     private String extractVisualContent(String content) {

@@ -287,23 +287,23 @@ public class MarkdownCourseParser {
      * Parse slide components (h6) under a slide node
      */
     private void parseSlideComponents(String content, ContentNode slideNode) {
-        Matcher componentMatcher = COMPONENT_PATTERN.matcher(content);
+        // Define pattern to match component sections (level 6 headers)
+        Pattern componentPattern = Pattern.compile("^#{6}\\s+(SCRIPT|VISUAL|NOTES|DEMONSTRATION)\\s*$(.*?)(?=^#{6}|^-{3,}|$)",
+                Pattern.DOTALL | Pattern.MULTILINE);
 
-        // Map to track the components we've processed
-        Map<String, SlideComponent.ComponentType> componentMap = new HashMap<>();
-        componentMap.put("SCRIPT", SlideComponent.ComponentType.SCRIPT);
-        componentMap.put("VISUAL", SlideComponent.ComponentType.VISUAL);
-        componentMap.put("NOTES", SlideComponent.ComponentType.NOTES);
-        componentMap.put("DEMONSTRATION", SlideComponent.ComponentType.DEMONSTRATION);
+        Matcher matcher = componentPattern.matcher(content);
 
-        while (componentMatcher.find()) {
-            String componentType = componentMatcher.group(1).trim();
-            String componentContent = componentMatcher.group(2).trim();
+        // Process each component found
+        while (matcher.find()) {
+            String componentTypeStr = matcher.group(1).trim();
+            String componentContent = matcher.group(2).trim();
 
-            // Map the component type to our enum
-            SlideComponent.ComponentType type = componentMap.get(componentType);
-            if (type == null) {
-                log.warn("Unknown component type: {} for slide: {}", componentType, slideNode.getTitle());
+            // Map the header text directly to enum
+            SlideComponent.ComponentType componentType;
+            try {
+                componentType = SlideComponent.ComponentType.valueOf(componentTypeStr);
+            } catch (IllegalArgumentException e) {
+                log.warn("Unknown component type '{}' in slide: {}", componentTypeStr, slideNode.getTitle());
                 continue;
             }
 
@@ -311,13 +311,13 @@ public class MarkdownCourseParser {
                 // Create the slide component
                 SlideComponent component = slideComponentService.createComponent(
                         slideNode.getId(),
-                        type,
+                        componentType,
                         componentContent
                 );
-                log.info("Created {} component for slide: {}", type, slideNode.getTitle());
+                log.info("Created {} component for slide: {}", componentType, slideNode.getTitle());
             } catch (Exception e) {
                 log.error("Failed to create component {} for slide {}: {}",
-                        componentType, slideNode.getTitle(), e.getMessage());
+                        componentTypeStr, slideNode.getTitle(), e.getMessage());
             }
         }
     }
