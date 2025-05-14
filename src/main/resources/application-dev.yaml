@@ -7,3 +7,7 @@ coursecrafter:
   import:
     enabled: true
     folder: course_content
+
+logging:
+  level:
+    com.coherentsolutions.coursecrafter.util: DEBUG
