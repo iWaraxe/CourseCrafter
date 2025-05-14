@@ -27,7 +27,7 @@ spring:
 
 git:
   repo:
-    root: /Users/igorwaraxe/ClaudeCode/CourseUpdater/course-material-repo
+    root: /Users/igorwaraxe/ClaudeCode/CourseUpdater/course-material-repo/BasicAiCourse
     remote: origin
     defaultBranch: main
   auth:
@@ -38,6 +38,6 @@ coursecrafter:
   import:
     # Enable/disable database import functionality
     # Set to true to perform the first-time import of lecture content
-    enabled: false
+    enabled: true
     # Override default import folder location (optional)
     folder: course_content

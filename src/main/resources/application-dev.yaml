@@ -1,0 +1,9 @@
+# Disable Git operations for development
+git:
+  enabled: false  # This property will be checked in GitCliService
+
+# Enable content import
+coursecrafter:
+  import:
+    enabled: true
+    folder: course_content

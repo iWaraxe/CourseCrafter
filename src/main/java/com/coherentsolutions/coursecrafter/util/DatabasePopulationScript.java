@@ -54,11 +54,6 @@ public class DatabasePopulationScript implements CommandLineRunner {
             return;
         }
 
-        // Check if database is already populated
-        if (contentNodeRepository.count() > 0) {
-            log.info("Database already has content. Skipping population script.");
-            return;
-        }
 
         log.info("Starting to populate database with course content from markdown files...");
 

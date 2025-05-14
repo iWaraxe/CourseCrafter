@@ -5,6 +5,7 @@ import com.coherentsolutions.coursecrafter.domain.content.repository.ContentNode
 import com.coherentsolutions.coursecrafter.domain.slide.model.SlideComponent;
 import com.coherentsolutions.coursecrafter.domain.slide.repository.SlideComponentRepository;
 import com.coherentsolutions.coursecrafter.domain.slide.service.SlideComponentService;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,6 +25,7 @@ import java.util.regex.Pattern;
 @RequiredArgsConstructor
 @Slf4j
 @Order(3) // Ensure this runs after the main population script
+@Transactional  // Add this at the class level
 public class SlideComponentExtractor implements CommandLineRunner {
 
     private final ContentNodeRepository contentNodeRepository;
@@ -53,7 +55,7 @@ public class SlideComponentExtractor implements CommandLineRunner {
         log.info("Slide component extraction completed.");
     }
 
-    private void extractSlideComponents() {
+    protected void extractSlideComponents() {
         // Get all slide nodes
         List<ContentNode> slideNodes = contentNodeRepository.findByNodeType(ContentNode.NodeType.SLIDE);
         log.info("Found {} slide nodes to process", slideNodes.size());
@@ -63,7 +65,7 @@ public class SlideComponentExtractor implements CommandLineRunner {
         }
     }
 
-    private void processSlide(ContentNode slide) {
+    protected void processSlide(ContentNode slide) {
         // Determine component type based on slide title
         String slideTitle = slide.getTitle().toLowerCase();
         SlideComponent.ComponentType componentType;

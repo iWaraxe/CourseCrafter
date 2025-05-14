@@ -17,8 +17,11 @@ public class GitCliConfig {
     @Value("${git.repo.defaultBranch:main}")
     private String defaultBranch;     // defaults to “main”
 
+    @Value("${git.enabled:true}")
+    private boolean enabled;
+
     @Bean
     public GitCliService gitCliService() {
-        return new GitCliService(repoRoot, remote, defaultBranch);
+        return new GitCliService(repoRoot, remote, defaultBranch, enabled);
     }
 }
