@@ -3,6 +3,7 @@ package com.coherentsolutions.coursecrafter.util;
 import com.coherentsolutions.coursecrafter.domain.content.model.ContentNode;
 import com.coherentsolutions.coursecrafter.domain.content.repository.ContentNodeRepository;
 import com.coherentsolutions.coursecrafter.domain.content.service.ContentNodeService;
+import com.coherentsolutions.coursecrafter.domain.slide.service.SlideComponentService;
 import com.coherentsolutions.coursecrafter.domain.version.repository.ContentVersionRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -35,6 +36,7 @@ public class DatabasePopulationScript implements CommandLineRunner {
     private final ContentNodeRepository contentNodeRepository;
     private final ContentVersionRepository contentVersionRepository;
     private final ContentNodeService contentNodeService;
+    private final SlideComponentService slideComponentService;
 
     // Inject a check for whether import is enabled
     @Autowired(required = false)
@@ -59,7 +61,31 @@ public class DatabasePopulationScript implements CommandLineRunner {
         }
 
         log.info("Starting to populate database with course content from markdown files...");
-        populateDatabaseFromMarkdownFiles();
+
+        // Process each markdown file
+        Path dirPath = Paths.get(markdownFilesDir);
+
+        // Check if directory exists
+        if (!Files.exists(dirPath)) {
+            log.error("Markdown files directory does not exist: {}", markdownFilesDir);
+            return;
+        }
+
+        // Create the parser
+        MarkdownCourseParser parser = new MarkdownCourseParser(
+                contentNodeRepository, contentNodeService, slideComponentService);
+
+        // Process each .md file in the directory
+        Files.list(dirPath)
+                .filter(path -> path.toString().endsWith(".md"))
+                .forEach(path -> {
+                    try {
+                        parser.parseFile(path);
+                    } catch (Exception e) {
+                        log.error("Error processing file: {}", path, e);
+                    }
+                });
+
         log.info("Database population completed.");
     }
 

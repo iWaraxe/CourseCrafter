@@ -1,9 +1,7 @@
 package com.coherentsolutions.coursecrafter.config;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Profile;
 import org.springframework.core.env.Environment;
 
 import lombok.RequiredArgsConstructor;
@@ -16,7 +14,6 @@ import lombok.extern.slf4j.Slf4j;
 @Configuration
 @RequiredArgsConstructor
 @Slf4j
-@Profile("dev") // Only active in development profile
 public class ContentImportConfig {
 
     private final Environment environment;
