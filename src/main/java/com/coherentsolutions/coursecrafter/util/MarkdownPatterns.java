@@ -18,8 +18,8 @@ public final class MarkdownPatterns {
 
     // Component patterns
     public static final Pattern COMPONENT_PATTERN = Pattern.compile(
-            "(?m)^\\s*#{6}\\s+(SCRIPT|VISUAL|NOTES|DEMONSTRATION)\\s*:?\\s*$\\s*(.*?)(?=^\\s*#{6}|^\\s*-{3,}|$)",
-            Pattern.DOTALL | Pattern.MULTILINE);
+            "#{6}\\s+(SCRIPT|VISUAL|NOTES|DEMONSTRATION)\\s*:?\\s*[\\r\\n]+(.*?)(?=#{6}|$)",
+            Pattern.DOTALL);
 
     // Table structure pattern
     public static final Pattern TABLE_PATTERN = Pattern.compile("\\|(.+?)\\|", Pattern.DOTALL);
