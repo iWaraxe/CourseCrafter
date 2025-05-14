@@ -13,7 +13,7 @@ public final class MarkdownPatterns {
     public static final Pattern LECTURE_PATTERN = Pattern.compile("^## ([^\\n]+)", Pattern.MULTILINE);
     public static final Pattern SECTION_PATTERN = Pattern.compile("^### ([^\\n]+)", Pattern.MULTILINE);
     public static final Pattern TOPIC_PATTERN = Pattern.compile("^#### ([^\\n]+)", Pattern.MULTILINE);
-    public static final Pattern SLIDE_PATTERN = Pattern.compile("^##### \\[seq:(\\d+)\\] ([^\\n]+)([\\s\\S]*?)(?=^---$|^##### |$)",
+    public static final Pattern SLIDE_PATTERN = Pattern.compile("^##### \\[seq:(\\d+)\\] ([^\\n]+)\\n([\\s\\S]*?)(?=^##### |$)",
             Pattern.MULTILINE);
 
     // Component patterns
