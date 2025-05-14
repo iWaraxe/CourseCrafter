@@ -281,11 +281,16 @@ public class MarkdownCourseParser {
      * Parse slide components (h6) under a slide node
      */
     private void parseSlideComponents(String content, ContentNode slideNode) {
+        log.debug("Processing slide content (length: {}): \n{}", content.length(),
+                content.length() > 300 ? content.substring(0, 300) + "..." : content);
+
         // Updated pattern with optional spaces and formatting
         Matcher matcher = MarkdownPatterns.COMPONENT_PATTERN.matcher(content);
+        int componentCount = 0;
 
         // Process each component found
         while (matcher.find()) {
+            componentCount++;
             String componentTypeStr = matcher.group(1).trim();
             String componentContent = matcher.group(2).trim();
 
@@ -311,5 +316,6 @@ public class MarkdownCourseParser {
                         componentTypeStr, slideNode.getTitle(), e.getMessage());
             }
         }
+        log.debug("Found {} components in slide '{}'", componentCount, slideNode.getTitle());
     }
 }

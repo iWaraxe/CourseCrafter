@@ -15,8 +15,13 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -74,10 +79,42 @@ public class SlideComponentExtractor implements CommandLineRunner {
         if (slide.getVersions() == null || slide.getVersions().isEmpty()) {
             log.warn("Slide has no versions: {} (ID: {})", slide.getTitle(), slide.getId());
 
-            // Create a default version for this slide
+            // Use AtomicReference to hold mutable state across the lambda
+            AtomicReference<String> fullContentRef = new AtomicReference<>("");
+            try {
+                Path courseContentDir = Paths.get("course_content");
+                String slideTitle = slide.getTitle();
+
+                Files.list(courseContentDir)
+                        .filter(path -> path.toString().endsWith(".md"))
+                        .forEach(path -> {
+                            try {
+                                String content = Files.readString(path);
+                                Matcher slideMatcher = MarkdownPatterns.SLIDE_PATTERN.matcher(content);
+                                while (slideMatcher.find()) {
+                                    String seqNumber = slideMatcher.group(1).trim();
+                                    String foundTitle = slideMatcher.group(2).trim();
+                                    String slideContent = slideMatcher.group(3).trim();
+
+                                    if (foundTitle.equals(slideTitle)) {
+                                        fullContentRef.set(slideContent);
+                                    }
+                                }
+                            } catch (IOException e) {
+                                log.error("Error reading markdown file", e);
+                            }
+                        });
+            } catch (Exception e) {
+                log.error("Failed to find original slide content", e);
+            }
+
+            // Get the content from the reference
+            String versionContent = fullContentRef.get().isEmpty() ?
+                    slide.getTitle() : fullContentRef.get();
+
             ContentVersion defaultVersion = ContentVersion.builder()
                     .node(slide)
-                    .content(slide.getTitle())  // Use slide title as minimal content
+                    .content(versionContent)
                     .contentFormat("MARKDOWN")
                     .versionNumber(1)
                     .createdAt(LocalDateTime.now())
