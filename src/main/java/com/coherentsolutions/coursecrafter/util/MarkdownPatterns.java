@@ -13,14 +13,22 @@ public final class MarkdownPatterns {
     public static final Pattern LECTURE_PATTERN = Pattern.compile("^## ([^\\n]+)", Pattern.MULTILINE);
     public static final Pattern SECTION_PATTERN = Pattern.compile("^### ([^\\n]+)", Pattern.MULTILINE);
     public static final Pattern TOPIC_PATTERN = Pattern.compile("^#### ([^\\n]+)", Pattern.MULTILINE);
+    /**
+     * This pattern is specifically designed to capture slide headers and their content
+     * Group 1: Sequence number
+     * Group 2: Slide title
+     * Group 3: Complete slide content (should include all components)
+     */
     public static final Pattern SLIDE_PATTERN = Pattern.compile(
-            "##### \\[seq:(\\d+)\\] ([^\\n]+)\\s+(.*?)(?=##### |$)",
-            Pattern.DOTALL | Pattern.MULTILINE
+            "##### \\[seq:(\\d+)\\] ([^\\n]+)\\n((?:[\\s\\S](?!##### \\[seq:[0-9]+\\]))*)(?=##### |$)",
+            Pattern.MULTILINE
     );
-
-    // Component patterns
+    /**
+     * This pattern matches individual slide components with their content
+     * It's designed to capture each component type and its content separately
+     */
     public static final Pattern COMPONENT_PATTERN = Pattern.compile(
-            "###### (SCRIPT|VISUAL|NOTES|DEMONSTRATION)\\s*(.*?)(?=###### |$)",
+            "###### (SCRIPT|VISUAL|NOTES|DEMONSTRATION)\\s*\\n([\\s\\S]*?)(?=\\s*###### |$)",
             Pattern.DOTALL
     );
 

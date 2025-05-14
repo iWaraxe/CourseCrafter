@@ -33,6 +33,11 @@ public class MarkdownCourseParser {
         log.info("Parsing markdown file: {}", filePath.getFileName());
         String content = Files.readString(filePath);
 
+        // DEBUG: Print the entire file content for inspection
+        log.debug("==================== FILE CONTENT ====================");
+        log.debug(content);
+        log.debug("====================================================");
+
         // Parse course
         ContentNode courseNode = parseCourse(content);
         if (courseNode == null) {
@@ -238,43 +243,109 @@ public class MarkdownCourseParser {
     private void parseSlides(String content, ContentNode parentNode) throws IOException, InterruptedException {
         Matcher slideMatcher = MarkdownPatterns.SLIDE_PATTERN.matcher(content);
 
+        log.debug("Looking for slides in content of length: {}", content.length());
+
         while (slideMatcher.find()) {
             String seqNumber = slideMatcher.group(1).trim();
             String slideTitle = slideMatcher.group(2).trim();
             String slideContent = slideMatcher.group(3).trim();
 
-            log.debug("Extracted slide content for slide '{}' (length: {}):\n{}",
-                    slideTitle, slideContent.length(),
-                    slideContent.length() > 300 ? slideContent.substring(0, 300) + "..." : slideContent);
+            log.debug("FOUND SLIDE: seq={}, title={}, content length={}",
+                    seqNumber, slideTitle, slideContent.length());
 
-            // Convert sequence number to display order
-            int displayOrder;
-            try {
-                displayOrder = Integer.parseInt(seqNumber);
-            } catch (NumberFormatException e) {
-                log.warn("Invalid sequence number: {} for slide: {}, using default", seqNumber, slideTitle);
-                displayOrder = 1000; // Default high value if parsing fails
+            // Manual check for existing slides with the same title and sequence
+            boolean slideExists = false;
+            int displayOrder = Integer.parseInt(seqNumber);
+
+            // Use existing methods to query
+            List<ContentNode> existingSlides = contentNodeRepository.findByNodeType(ContentNode.NodeType.SLIDE);
+            for (ContentNode node : existingSlides) {
+                if (node.getTitle().equals(slideTitle) && node.getDisplayOrder() == displayOrder) {
+                    slideExists = true;
+                    log.info("Slide '{}' with sequence {} already exists (ID: {}), skipping",
+                            slideTitle, seqNumber, node.getId());
+                    break;
+                }
             }
+
+            if (slideExists) {
+                continue; // Skip to the next slide
+            }
+
 
             // Create slide node with sequence-based display order
             ContentNode slideNode = ContentNode.builder()
                     .nodeType(ContentNode.NodeType.SLIDE)
                     .parent(parentNode)
                     .title(slideTitle)
-                    .displayOrder(displayOrder)
+                    .displayOrder(Integer.parseInt(seqNumber))
                     .path(parentNode.getPath() + "/Slide/" + seqNumber)
                     .createdAt(LocalDateTime.now())
                     .updatedAt(LocalDateTime.now())
                     .build();
 
-            slideNode = contentNodeService.createNode(slideNode,
-                    slideContent,
-                    "Created slide: " + slideTitle);
-            log.info("Created slide: {} with sequence {}", slideTitle, seqNumber);
+            try {
+                // Save and commit the slide node
+                slideNode = contentNodeService.createNode(slideNode,
+                        slideContent,
+                        "Created slide: " + slideTitle);
 
-            // Parse components for this slide
-            parseSlideComponents(slideContent, slideNode);
+                log.info("Created slide: {} with sequence {}", slideTitle, seqNumber);
+
+                // Process components within this slide
+                processSlideComponents(slideContent, slideNode);
+            } catch (Exception e) {
+                log.error("Failed to create slide {}: {}", slideTitle, e.getMessage());
+            }
         }
+    }
+
+    private void processSlideComponents(String slideContent, ContentNode slideNode) {
+        log.debug("Processing slide content (length: {}): \n{}", slideContent.length(), slideContent);
+
+        // Create the component matcher with our updated pattern
+        Matcher componentMatcher = MarkdownPatterns.COMPONENT_PATTERN.matcher(slideContent);
+
+        int componentCount = 0;
+
+        // Find all components in the slide content
+        while (componentMatcher.find()) {
+            componentCount++;
+
+            String componentTypeStr = componentMatcher.group(1).trim();
+            String componentContent = componentMatcher.group(2).trim();
+
+            log.debug("Found component type: {} with content: {}",
+                    componentTypeStr,
+                    componentContent.length() > 30 ?
+                            componentContent.substring(0, 30) + "..." :
+                            componentContent);
+
+            // Convert string to enum
+            SlideComponent.ComponentType componentType;
+            try {
+                componentType = SlideComponent.ComponentType.valueOf(componentTypeStr);
+            } catch (IllegalArgumentException e) {
+                log.warn("Unknown component type: {} in slide: {}", componentTypeStr, slideNode.getTitle());
+                continue;
+            }
+
+            try {
+                // Create the component
+                SlideComponent component = slideComponentService.createComponent(
+                        slideNode.getId(),
+                        componentType,
+                        componentContent
+                );
+
+                log.info("Created {} component for slide: {}", componentType, slideNode.getTitle());
+            } catch (Exception e) {
+                log.error("Failed to create component {} for slide {}: {}",
+                        componentTypeStr, slideNode.getTitle(), e.getMessage());
+            }
+        }
+
+        log.debug("Found {} components in slide '{}'", componentCount, slideNode.getTitle());
     }
 
     /**

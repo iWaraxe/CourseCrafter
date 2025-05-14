@@ -47,8 +47,8 @@ public class ContentNodeService {
             node.setPath(node.getNodeType() + "/" + UUID.randomUUID().toString().substring(0, 8));
         }
 
-        // Save the node first
-        ContentNode savedNode = nodeRepository.save(node);
+        // Save the node first and flush to ensure it's committed
+        ContentNode savedNode = nodeRepository.saveAndFlush(node);
 
         // Create initial version
         if (content != null && !content.isBlank()) {
@@ -59,7 +59,7 @@ public class ContentNodeService {
                     .versionNumber(1)
                     .createdAt(LocalDateTime.now())
                     .build();
-            versionRepository.save(version);
+            versionRepository.saveAndFlush(version); // Use saveAndFlush
         }
 
         // Commit to Git

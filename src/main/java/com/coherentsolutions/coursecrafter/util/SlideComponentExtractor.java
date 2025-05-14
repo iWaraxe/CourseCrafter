@@ -14,6 +14,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Propagation;
 
 import java.io.IOException;
 import java.nio.file.DirectoryStream;
@@ -53,6 +54,13 @@ public class SlideComponentExtractor implements CommandLineRunner {
         if (databaseImportEnabled != null && !databaseImportEnabled) {
             log.info("Database import is disabled. Skipping slide component extraction.");
             return;
+        }
+
+        // Force a short delay to ensure all DB operations are complete
+        try {
+            Thread.sleep(1000);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
         }
 
         // Check if slide components already exist
