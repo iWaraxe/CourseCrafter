@@ -2,11 +2,13 @@
 package com.coherentsolutions.coursecrafter.infrastructure.git;
 
 import groovyjarjarpicocli.CommandLine;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 
+@Slf4j
 @Component
 public class GitCliService {
 
@@ -27,15 +29,33 @@ public class GitCliService {
     }
 
     public void commitAndPush(String branch, String message) throws IOException, InterruptedException {
-
         if (!enabled) {
+            log.info("Git operations disabled, skipping commit and push");
             return; // Skip Git operations if disabled
         }
 
-        run("git", "-C", repoRoot, "checkout", "-B", branch, defaultBranch);
-        run("git", "-C", repoRoot, "add", ".");
-        run("git", "-C", repoRoot, "commit", "-m", message);
-        run("git", "-C", repoRoot, "push", "-f", remote, branch);
+        try {
+            run("git", "-C", repoRoot, "checkout", "-B", branch, defaultBranch);
+            run("git", "-C", repoRoot, "add", ".");
+
+            // Check if there are changes to commit
+            ProcessBuilder pb = new ProcessBuilder("git", "-C", repoRoot, "status", "--porcelain");
+            Process p = pb.start();
+            String changes = new String(p.getInputStream().readAllBytes()).trim();
+            p.waitFor();
+
+            if (changes.isEmpty()) {
+                log.info("No changes to commit, skipping commit operation");
+                return;
+            }
+
+            run("git", "-C", repoRoot, "commit", "-m", message);
+            run("git", "-C", repoRoot, "push", "-f", remote, branch);
+        } catch (Exception e) {
+            log.error("Git operation failed: {}", e.getMessage());
+            // Either re-throw or handle more gracefully
+            throw e;
+        }
     }
 
     /**

@@ -6,6 +6,7 @@ import com.coherentsolutions.coursecrafter.application.api.ai.EnhancedAnalyzerSe
 import com.coherentsolutions.coursecrafter.application.api.ai.EnhancedUpdaterService;
 import com.coherentsolutions.coursecrafter.application.api.ai.SummarizationService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -14,6 +15,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class EnhancedTextIngestionService {
@@ -31,23 +33,41 @@ public class EnhancedTextIngestionService {
             String audience,
             LocalDate reportDate) throws IOException, InterruptedException {
 
-        // 1. Clean and summarize the content with enhanced context
-        String cleanedContent = summarizationService.summarize(content, courseName, audience, reportDate);
+        log.info("Processing content update for course: {}, audience: {}, reportDate: {}",
+                courseName, audience, reportDate);
+        log.debug("Raw content length: {} characters", content.length());
 
-        // 2. Analyze content and generate proposals - the analyzer should use the courseName to contextualize
+        // 1. Clean and summarize the content with enhanced context
+        log.debug("Step 1: Summarizing content...");
+        String cleanedContent = summarizationService.summarize(content, courseName, audience, reportDate);
+        log.debug("Summarized content length: {} characters", cleanedContent.length());
+
+        // 2. Analyze content and generate proposals
+        log.debug("Step 2: Analyzing content to generate proposals...");
         List<AiProposalDto> initialProposals = analyzerService.analyzeContentForCourse(courseName, cleanedContent);
+        log.debug("Generated {} initial proposals", initialProposals.size());
 
         if (initialProposals.isEmpty()) {
+            log.info("No proposals generated, nothing to update");
             return List.of(); // Nothing to do
         }
 
         // 3. Refine each proposal for better quality
+        log.debug("Step 3: Refining proposals...");
         List<AiProposalDto> refinedProposals = initialProposals.stream()
-                .map(proposal -> analyzerService.refineProposal(proposal, null))
+                .map(proposal -> {
+                    log.debug("Refining proposal: {}", proposal.title());
+                    return analyzerService.refineProposal(proposal, null);
+                })
                 .collect(Collectors.toList());
+        log.debug("Refined {} proposals", refinedProposals.size());
 
         // 4. Apply the proposals to create/update content
-        return updaterService.applyProposals(refinedProposals);
+        log.debug("Step 4: Applying proposals to update content...");
+        List<ContentNode> updatedNodes = updaterService.applyProposals(refinedProposals);
+        log.info("Updated {} content nodes", updatedNodes.size());
+
+        return updatedNodes;
     }
 
     /**
