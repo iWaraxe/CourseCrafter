@@ -1,5 +1,8 @@
 package com.coherentsolutions.coursecrafter.domain.content.service;
 
+import com.coherentsolutions.coursecrafter.domain.slide.model.SlideComponent;
+import com.coherentsolutions.coursecrafter.domain.slide.repository.SlideComponentRepository;
+import com.coherentsolutions.coursecrafter.domain.slide.service.SlideService;
 import com.coherentsolutions.coursecrafter.presentation.dto.content.ContentNodeDto;
 import com.coherentsolutions.coursecrafter.presentation.dto.content.ContentTreeDto;
 import com.coherentsolutions.coursecrafter.domain.content.model.ContentNode;
@@ -9,6 +12,7 @@ import com.coherentsolutions.coursecrafter.domain.version.repository.ContentVers
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -19,6 +23,7 @@ public class ContentHierarchyService {
 
     private final ContentNodeRepository nodeRepository;
     private final ContentVersionRepository versionRepository;
+    private final SlideComponentRepository slideComponentRepository;
 
     /**
      * Generates a complete hierarchical tree of content
@@ -123,6 +128,64 @@ public class ContentHierarchyService {
 
         // Build a hierarchical representation for this specific course
         // Similar to the generateLlmOutlineContext method but filtered by course
+
+        return builder.toString();
+    }
+
+    /**
+     * Generates a detailed text-based outline with slide components
+     */
+    public String generateDetailedOutlineContext(String courseName) {
+        // Get all content nodes related to this course
+        List<ContentNode> courseNodes = nodeRepository.findByPathPattern(courseName + "/%");
+
+        // Build a hierarchical representation with all slide titles
+        StringBuilder builder = new StringBuilder();
+        builder.append("# Course: ").append(courseName).append("\n\n");
+
+        // Sort nodes by path to ensure correct hierarchical order
+        courseNodes.sort(Comparator.comparing(ContentNode::getPath));
+
+        for (ContentNode node : courseNodes) {
+            switch (node.getNodeType()) {
+                case COURSE:
+                    builder.append("# Course: ").append(node.getTitle()).append("\n\n");
+                    break;
+                case MODULE:
+                    builder.append("# Module: ").append(node.getTitle()).append("\n\n");
+                    break;
+                case LECTURE:
+                    builder.append("## Lecture ").append(node.getNodeNumber()).append(": ")
+                            .append(node.getTitle()).append("\n\n");
+                    break;
+                case SECTION:
+                    builder.append("### Section ").append(node.getNodeNumber()).append(": ")
+                            .append(node.getTitle()).append("\n\n");
+                    break;
+                case TOPIC:
+                    builder.append("#### Topic ").append(node.getNodeNumber()).append(": ")
+                            .append(node.getTitle()).append("\n\n");
+                    break;
+                case SLIDE:
+                    builder.append("##### Slide ").append(node.getNodeNumber()).append(": ")
+                            .append(node.getTitle()).append("\n\n");
+
+                    // Include the existing slide components for context
+                    try {
+                        List<SlideComponent> components = slideComponentRepository.findBySlideNodeIdOrderByDisplayOrder(node.getId());
+                        if (!components.isEmpty()) {
+                            for (SlideComponent comp : components) {
+                                builder.append("###### ").append(comp.getComponentType()).append("\n");
+                                builder.append(comp.getContent().substring(0, Math.min(50, comp.getContent().length()))).append("...\n\n");
+                            }
+                        }
+                    } catch (Exception e) {
+                        // Handle gracefully if component repository is not available
+                        builder.append("(Component data not available)\n\n");
+                    }
+                    break;
+            }
+        }
 
         return builder.toString();
     }
