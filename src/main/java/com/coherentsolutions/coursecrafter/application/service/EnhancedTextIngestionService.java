@@ -2,7 +2,6 @@ package com.coherentsolutions.coursecrafter.application.service;
 
 import com.coherentsolutions.coursecrafter.presentation.dto.ai.AiProposalDto;
 import com.coherentsolutions.coursecrafter.domain.content.model.ContentNode;
-import com.coherentsolutions.coursecrafter.domain.legacy.model.CourseContent;
 import com.coherentsolutions.coursecrafter.application.api.ai.EnhancedAnalyzerService;
 import com.coherentsolutions.coursecrafter.application.api.ai.EnhancedUpdaterService;
 import com.coherentsolutions.coursecrafter.application.api.ai.SummarizationService;
@@ -10,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -23,14 +23,19 @@ public class EnhancedTextIngestionService {
     private final EnhancedUpdaterService updaterService;
 
     /**
-     * Complete process for ingesting and integrating new content
+     * Process content updates for a specific course with enhanced context
      */
-    public List<ContentNode> processContent(String rawContent) throws IOException, InterruptedException {
-        // 1. Clean and summarize the content
-        String cleanedContent = summarizationService.summarize(rawContent);
+    public List<ContentNode> processContentUpdate(
+            String courseName,
+            String content,
+            String audience,
+            LocalDate reportDate) throws IOException, InterruptedException {
 
-        // 2. Analyze content and generate proposals
-        List<AiProposalDto> initialProposals = analyzerService.analyzeContent(cleanedContent);
+        // 1. Clean and summarize the content with enhanced context
+        String cleanedContent = summarizationService.summarize(content, courseName, audience, reportDate);
+
+        // 2. Analyze content and generate proposals - the analyzer should use the courseName to contextualize
+        List<AiProposalDto> initialProposals = analyzerService.analyzeContentForCourse(courseName, cleanedContent);
 
         if (initialProposals.isEmpty()) {
             return List.of(); // Nothing to do
@@ -46,17 +51,20 @@ public class EnhancedTextIngestionService {
     }
 
     /**
-     * Process content updates for a specific course
-     * This method takes courseName into account during analysis
+     * Complete process for ingesting and integrating new content
      */
-    public List<CourseContent> processContentUpdate(String courseName, String content)
-            throws IOException, InterruptedException {
+    public List<ContentNode> processContent(
+            String rawContent,
+            String courseName,
+            String audience,
+            LocalDate reportDate) throws IOException, InterruptedException {
 
-        // 1. Clean and summarize the content
-        String cleanedContent = summarizationService.summarize(content);
+        // 1. Clean and summarize with enhanced context
+        String cleanedContent = summarizationService.summarize(
+                rawContent, courseName, audience, reportDate);
 
-        // 2. Analyze content and generate proposals - the analyzer should use the courseName to contextualize
-        List<AiProposalDto> initialProposals = analyzerService.analyzeContentForCourse(courseName, cleanedContent);
+        // 2. Analyze content and generate proposals
+        List<AiProposalDto> initialProposals = analyzerService.analyzeContent(cleanedContent, courseName);
 
         if (initialProposals.isEmpty()) {
             return List.of(); // Nothing to do
@@ -68,29 +76,6 @@ public class EnhancedTextIngestionService {
                 .collect(Collectors.toList());
 
         // 4. Apply the proposals to create/update content
-        List<ContentNode> updatedNodes = updaterService.applyProposals(refinedProposals);
-
-        // 5. Convert ContentNode objects to CourseContent objects (temporary during migration)
-        return convertToCourseContent(updatedNodes);
-    }
-
-    /**
-     * Temporary helper method to convert ContentNode objects to CourseContent objects during migration
-     */
-    private List<CourseContent> convertToCourseContent(List<ContentNode> nodes) {
-        List<CourseContent> results = new ArrayList<>();
-
-        for (ContentNode node : nodes) {
-            CourseContent cc = new CourseContent();
-            cc.setId(node.getId());
-            cc.setTitle(node.getTitle());
-            cc.setLevel(node.getNodeType().toString());
-            cc.setPath(node.getPath());
-            // Set other fields as needed
-
-            results.add(cc);
-        }
-
-        return results;
+        return updaterService.applyProposals(refinedProposals);
     }
 }

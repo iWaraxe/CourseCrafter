@@ -22,53 +22,47 @@ public class EnhancedAnalyzerService {
      * Analyzes new content and generates proposals for integrating it
      * into the existing content structure
      */
-    public List<AiProposalDto> analyzeContent(String newContent) {
+    public List<AiProposalDto> analyzeContent(String cleanedContent, String courseName) {
         // Get course structure as formatted text for LLM context
-        String courseContext = hierarchyService.generateLlmOutlineContext();
+        String courseContext = hierarchyService.generateDetailedOutlineContext(courseName);
 
         var response = chatClient.prompt()
                 .system("""
-                        You are CourseCrafter AI, an expert system for educational content analysis.
-                        
-                        You will be given:
-                        1. The current structure and content of a course
-                        2. New content to be integrated into this course
-                        
-                        Analyze where and how this new content should be integrated. Return a JSON array of proposals following this schema:
-                        [{
-                          "targetNodeId": Long?,      // ID of existing node to modify, null for new nodes
-                          "parentNodeId": Long,       // Parent ID where to place new content
-                          "nodeType": "LECTURE|SECTION|TOPIC|SLIDE",
-                          "action": "ADD|UPDATE|DELETE",
-                          "title": String,            // Title for the node
-                          "nodeNumber": String?,      // Node number in the hierarchy (e.g., "1.2.3")
-                          "content": String,          // Content to add/replace
-                          "rationale": String,        // Explanation of why this change is needed
-                          "displayOrder": Integer?    // Suggested display order
-                        }]
-                        
-                        For new nodes (targetNodeId = null), you must specify:
-                        - The parentNodeId where it should be placed
-                        - The nodeType it should be
-                        - A meaningful title
-                        - The content
-                        
-                        For updates (targetNodeId != null), provide:
-                        - The targetNodeId to modify
-                        - New/modified content
-                        
-                        Be strategic and thoughtful about:
-                        1. Where content logically fits in the course structure
-                        2. Whether to create new nodes or update existing ones
-                        3. Maintaining consistent style and format with existing content
-                        """)
+                You are CourseCrafter AI, an expert system for educational content analysis.
+                
+                You will be given:
+                1. The current detailed structure of the "%s" course
+                2. New content to be integrated into this course
+                
+                Analyze specifically where and how this new content should be integrated, considering:
+                - The appropriate lecture, section, topic, and slide placement
+                - Whether to create new nodes or update existing ones
+                - The type of content (script, visual, notes, or demonstration)
+                - The teaching level and target audience
+                
+                Return a JSON array of precise proposals following this schema:
+                [{
+                  "targetNodeId": Long?,      // ID of existing node to modify, null for new nodes
+                  "parentNodeId": Long,       // Parent ID where to place new content
+                  "nodeType": "LECTURE|SECTION|TOPIC|SLIDE",
+                  "action": "ADD|UPDATE|DELETE",
+                  "componentType": "SCRIPT|VISUAL|NOTES|DEMONSTRATION",  // For slides only
+                  "title": String,            // Title for the node
+                  "nodeNumber": String?,      // Node number in the hierarchy (e.g., "1.2.3")
+                  "content": String,          // Content to add/replace
+                  "rationale": String,        // Explanation of why this change is needed
+                  "displayOrder": Integer?    // Suggested display order
+                }]
+                
+                Be extremely precise about placement, teaching level, and component type.
+                """.formatted(courseName))
                 .user("""
-                        # COURSE STRUCTURE
-                        %s
-                        
-                        # NEW CONTENT TO INTEGRATE
-                        %s
-                        """.formatted(courseContext, newContent))
+                # COURSE STRUCTURE
+                %s
+                
+                # NEW CONTENT TO INTEGRATE
+                %s
+                """.formatted(courseContext, cleanedContent))
                 .call();
 
         try {
