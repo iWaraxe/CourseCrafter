@@ -3,7 +3,9 @@
 
 ### 1. Introduction: From Theory to Practice
 
-##### Introduction
+#### 1.1. Course Overview and Context
+
+##### [seq:010] Introduction
 
 ###### SCRIPT
 
@@ -15,19 +17,20 @@ Our focus is not just on results, but also on comparing how different tools perf
 
 So—ready to put theory into practice? Let’s begin."
 
+
 ###### VISUAL
 
 **Slide Title: "From Theory to Practice"**
 
 - Left panel: Summary of Lecture 1:
-    - Systems: ChatGPT, Claude, Gemini, Perplexity, Mistral
-    - Concepts: LLMs, Multimodal AI, Bias, Hallucinations
+  - Systems: ChatGPT, Claude, Gemini, Perplexity, Mistral
+  - Concepts: LLMs, Multimodal AI, Bias, Hallucinations
 - Right panel: What we’ll cover today:
-    - Text Writing & Editing
-    - Code Generation & Debugging
-    - Visual & Document Analysis
-    - Tool Comparisons & Demos
-    - Integration into Workflows
+  - Text Writing & Editing
+  - Code Generation & Debugging
+  - Visual & Document Analysis
+  - Tool Comparisons & Demos
+  - Integration into Workflows
 
 Visuals: Icons representing each category (pen for writing, brackets for code, eye for visual, magnifying glass for analysis)
 
@@ -58,7 +61,9 @@ Visuals: Icons representing each category (pen for writing, brackets for code, e
 
 ### 2. Text Generation and Editing
 
-##### Writing and Editing Assistance
+#### 2.1. Content Creation
+
+##### [seq:020] Writing and Editing Assistance
 
 ###### SCRIPT
 
@@ -73,9 +78,9 @@ Let’s see how they handle writing from scratch, and then how they revise somet
 **Slide Title: "Writing & Editing with AI"**
 
 - Bullet Points:
-    - Write articles, blog posts, emails
-    - Adjust tone: professional, casual, persuasive
-    - Edit drafts for clarity, grammar, conciseness
+  - Write articles, blog posts, emails
+  - Adjust tone: professional, casual, persuasive
+  - Edit drafts for clarity, grammar, conciseness
 - Visual: Screenshot of ChatGPT editing interface + Claude writing suggestions box
 
 ###### NOTES
@@ -95,15 +100,17 @@ Let’s see how they handle writing from scratch, and then how they revise somet
 
 - Run both prompts across ChatGPT, Claude, and Gemini.
 - Compare:
-    - Structure and grammar improvements
-    - Tone (e.g., Claude tends to be more formal)
-    - Word choice and creativity
+  - Structure and grammar improvements
+  - Tone (e.g., Claude tends to be more formal)
+  - Word choice and creativity
 
 **Discussion Question:** "Which system gave you the best balance between clarity and personality?"
 
 ---
 
-##### Translation and Language Processing
+#### 2.2. Language Capabilities
+
+##### [seq:030] Translation and Language Processing
 
 ###### SCRIPT
 
@@ -119,9 +126,9 @@ Let’s test their abilities in formal and informal translation—and see how th
 **Slide Title: "AI-Powered Translation & Language Processing"**
 
 - Bullet Points:
-    - Real-time translation in messaging apps
-    - Context-sensitive phrasing and idioms
-    - Tone adjustment based on audience
+  - Real-time translation in messaging apps
+  - Context-sensitive phrasing and idioms
+  - Tone adjustment based on audience
 - Visual: Side-by-side translation example (English → Spanish, English → French)
 
 ###### NOTES
@@ -141,9 +148,9 @@ Let’s test their abilities in formal and informal translation—and see how th
 **Instructions:**
 
 - Use all three models and observe:
-    - Sentence structure fidelity
-    - Tone preservation
-    - Cultural interpretation of idioms
+  - Sentence structure fidelity
+  - Tone preservation
+  - Cultural interpretation of idioms
 
 **Discussion Prompt:** "How important is cultural knowledge in translation—and did the models demonstrate it well?"
 
@@ -151,7 +158,9 @@ Let’s test their abilities in formal and informal translation—and see how th
 
 ### 3. Code Generation and Debugging
 
-##### Code Generation
+#### 3.1. Programming Fundamentals
+
+##### [seq:040] Code Generation
 
 ###### SCRIPT
 
@@ -167,9 +176,9 @@ Let’s begin with a simple example—generating a Python script for the Fibonac
 **Slide Title: "Let AI Write the Code"**
 
 - Bullet Points:
-    - Generate functional code from plain English prompts
-    - Add inline comments and explanations
-    - Create quick utilities and automation scripts
+  - Generate functional code from plain English prompts
+  - Add inline comments and explanations
+  - Create quick utilities and automation scripts
 - Visual: Screenshot of ChatGPT generating a Python snippet
 
 
@@ -188,15 +197,17 @@ Let’s begin with a simple example—generating a Python script for the Fibonac
 
 - Run the prompt in ChatGPT, Claude, and Gemini
 - Compare:
-    - Code correctness
-    - Clarity and usefulness of comments
-    - Readability and structure
+  - Code correctness
+  - Clarity and usefulness of comments
+  - Readability and structure
 
 **Discussion Question:** "Which model gave you code you’d feel confident using as-is in a real project?"
 
 ---
 
-##### Debugging Assistance
+#### 3.2. Error Resolution
+
+##### [seq:050] Debugging Assistance
 
 ###### SCRIPT
 
@@ -212,9 +223,9 @@ Let’s take a buggy Python and JavaScript snippet and ask our AI companions to 
 **Slide Title: "Fixing Code with AI"**
 
 - Bullet Points:
-    - Debug from plain error messages or snippets
-    - Analyze code in screenshots
-    - Suggest fixes and improvements
+  - Debug from plain error messages or snippets
+  - Analyze code in screenshots
+  - Suggest fixes and improvements
 - Visual: Side-by-side before-and-after of buggy vs fixed code
 
 
@@ -229,10 +240,10 @@ Let’s take a buggy Python and JavaScript snippet and ask our AI companions to 
 
 **Demo 1 – Prompt:** "Here’s a piece of Python code with an error. Find the bug and fix it:
 
-````python
+```python
 def greet(name)
     print("Hello" + name)
-```"
+```
 
 **Demo 2 – Prompt:**
 "Here is a screenshot of JavaScript code (upload screenshot). Identify any errors and suggest corrections."
@@ -251,7 +262,9 @@ def greet(name)
 
 ### 4. Visual and Document Analysis
 
-##### Image Understanding and Generation
+#### 4.1. Image Processing
+
+##### [seq:060] Image Understanding and Generation
 
 ###### SCRIPT
 
@@ -297,7 +310,9 @@ We’ll begin by uploading diagrams, charts, and other visuals to see how well t
 
 ---
 
-##### Document Analysis and Data Extraction
+#### 4.2. Document Intelligence
+
+##### [seq:070] Document Analysis and Data Extraction
 
 ###### SCRIPT
 
@@ -346,7 +361,9 @@ This has huge implications for fields like law, education, and business. Let’s
 
 ### 5. Visual Programming Assistance
 
-##### Code and Diagram Analysis
+#### 5.1. Diagram Interpretation
+
+##### [seq:080] Code and Diagram Analysis
 
 ###### SCRIPT
 
@@ -395,7 +412,9 @@ Today’s AIs are surprisingly good at interpreting visual programming materials
 
 ### 6. Comparative Analysis of AI Visual Capabilities
 
-##### Cross-Model Visual Reasoning
+#### 6.1. Cross-Platform Performance
+
+##### [seq:090] Cross-Model Visual Reasoning
 
 ###### SCRIPT
 
@@ -444,7 +463,9 @@ Let’s get analytical about AI itself."
 
 ### 7. IDE and Workflow Integration
 
-##### AI Tools in the Developer Workflow
+#### 7.1. Development Environment
+
+##### [seq:100] AI Tools in the Developer Workflow
 
 ###### SCRIPT
 
@@ -494,7 +515,9 @@ The goal? Fewer context switches. Smarter development. More time to think, less 
 
 ### 8. Hands-On Activity: Interactive AI Exploration
 
-##### Activity Setup and Instructions
+#### 8.1. Activity Framework
+
+##### [seq:110] Activity Setup and Instructions
 
 ###### SCRIPT
 
@@ -527,9 +550,9 @@ This is where your experimentation begins."
 
 ---
 
-#### 8.1. Prompts to Explore
+#### 8.2. Exploration Prompts
 
-##### Writing
+##### [seq:120] Writing
 
 ###### DEMONSTRATION
 
@@ -538,7 +561,7 @@ This is where your experimentation begins."
 
 ---
 
-##### Code
+##### [seq:130] Code
 
 ###### DEMONSTRATION
 
@@ -547,7 +570,7 @@ This is where your experimentation begins."
 
 ---
 
-##### Visual
+##### [seq:140] Visual
 
 ###### DEMONSTRATION
 
@@ -556,7 +579,7 @@ This is where your experimentation begins."
 
 ---
 
-##### Document
+##### [seq:150] Document
 
 ###### DEMONSTRATION
 
@@ -564,7 +587,9 @@ This is where your experimentation begins."
 
 ---
 
-##### Discussion & Reflection
+#### 8.3. Collaborative Learning
+
+##### [seq:160] Discussion & Reflection
 
 ###### SCRIPT
 
@@ -595,7 +620,9 @@ Take a moment to discuss with the person next to you or jot down your key takeaw
 
 ### 9. Summary and Key Insights
 
-##### Recap of What We Explored
+#### 9.1. Learning Outcomes
+
+##### [seq:170] Recap of What We Explored
 
 ###### SCRIPT
 
@@ -628,7 +655,9 @@ Some models are better at structure, others at storytelling. Some at visuals, ot
 
 ---
 
-##### Real-World Implications
+#### 9.2. Practical Applications
+
+##### [seq:180] Real-World Implications
 
 ###### SCRIPT
 
@@ -659,7 +688,9 @@ That’s how we build a future where AI makes our work faster, smarter, and more
 
 ### 10. Homework Assignment: Practical AI Integration
 
-##### Homework Overview
+#### 10.1. Assignment Guidelines
+
+##### [seq:190] Homework Overview
 
 ###### SCRIPT
 
@@ -699,7 +730,9 @@ We’ve included a template for you to document your findings."
 
 ---
 
-##### Submission Instructions
+#### 10.2. Evaluation Criteria
+
+##### [seq:200] Submission Instructions
 
 ###### SCRIPT
 
@@ -727,7 +760,9 @@ This assignment is designed to make you comfortable experimenting, prompting, an
 
 ### 11. Resources for Continued Learning
 
-##### Recommended Tools and Libraries
+#### 11.1. Technology Resources
+
+##### [seq:210] Recommended Tools and Libraries
 
 ###### SCRIPT
 
@@ -762,7 +797,9 @@ Here are some resources to help you build skills, find inspiration, and stay con
 
 ---
 
-##### Communities and Learning Hubs
+#### 11.2. Community Engagement
+
+##### [seq:220] Communities and Learning Hubs
 
 ###### SCRIPT
 
