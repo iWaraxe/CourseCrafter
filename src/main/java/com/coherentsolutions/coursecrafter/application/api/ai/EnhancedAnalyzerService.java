@@ -3,6 +3,7 @@ package com.coherentsolutions.coursecrafter.application.api.ai;
 import com.coherentsolutions.coursecrafter.presentation.dto.ai.AiProposalDto;
 import com.coherentsolutions.coursecrafter.presentation.dto.ai.AiProposalListDto;
 import com.coherentsolutions.coursecrafter.domain.content.service.ContentHierarchyService;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.ai.chat.client.ChatClient;
@@ -67,8 +68,81 @@ public class EnhancedAnalyzerService {
 
         try {
             String jsonResponse = response.content();
-            AiProposalListDto proposalList = objectMapper.readValue(jsonResponse, AiProposalListDto.class);
-            return proposalList.proposals();
+            try {
+                // First try to parse as AiProposalListDto (object with proposals field)
+                AiProposalListDto proposalList = objectMapper.readValue(jsonResponse, AiProposalListDto.class);
+                return proposalList.proposals();
+            } catch (Exception e) {
+                // If that fails, try to parse directly as array of AiProposalDto
+                return objectMapper.readValue(jsonResponse, new TypeReference<List<AiProposalDto>>() {});
+            }
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to parse AI suggestions", e);
+        }
+    }
+
+    /**
+     * Simple version that doesn't require course name - for backward compatibility
+     */
+    public List<AiProposalDto> analyzeContent(String newContent) {
+        // Get generic course structure from hierarchy service
+        String courseContext = hierarchyService.generateLlmOutlineContext();
+
+        var response = chatClient.prompt()
+                .system("""
+                    You are CourseCrafter AI, an expert system for educational content analysis.
+                    
+                    You will be given:
+                    1. The current structure and content of a course
+                    2. New content to be integrated into this course
+                    
+                    Analyze where and how this new content should be integrated. Return a JSON array of proposals following this schema:
+                    [{
+                      "targetNodeId": Long?,      // ID of existing node to modify, null for new nodes
+                      "parentNodeId": Long,       // Parent ID where to place new content
+                      "nodeType": "LECTURE|SECTION|TOPIC|SLIDE",
+                      "action": "ADD|UPDATE|DELETE",
+                      "title": String,            // Title for the node
+                      "nodeNumber": String?,      // Node number in the hierarchy (e.g., "1.2.3")
+                      "content": String,          // Content to add/replace
+                      "rationale": String,        // Explanation of why this change is needed
+                      "displayOrder": Integer?    // Suggested display order
+                    }]
+                    
+                    For new nodes (targetNodeId = null), you must specify:
+                    - The parentNodeId where it should be placed
+                    - The nodeType it should be
+                    - A meaningful title
+                    - The content
+                    
+                    For updates (targetNodeId != null), provide:
+                    - The targetNodeId to modify
+                    - New/modified content
+                    
+                    Be strategic and thoughtful about:
+                    1. Where content logically fits in the course structure
+                    2. Whether to create new nodes or update existing ones
+                    3. Maintaining consistent style and format with existing content
+                    """)
+                .user("""
+                    # COURSE STRUCTURE
+                    %s
+                    
+                    # NEW CONTENT TO INTEGRATE
+                    %s
+                    """.formatted(courseContext, newContent))
+                .call();
+
+        try {
+            String jsonResponse = response.content();
+            try {
+                // First try to parse as AiProposalListDto (object with proposals field)
+                AiProposalListDto proposalList = objectMapper.readValue(jsonResponse, AiProposalListDto.class);
+                return proposalList.proposals();
+            } catch (Exception e) {
+                // If that fails, try to parse directly as array of AiProposalDto
+                return objectMapper.readValue(jsonResponse, new TypeReference<List<AiProposalDto>>() {});
+            }
         } catch (Exception e) {
             throw new RuntimeException("Failed to parse AI suggestions", e);
         }
@@ -184,8 +258,15 @@ public class EnhancedAnalyzerService {
 
         try {
             String jsonResponse = response.content();
-            AiProposalListDto proposalList = objectMapper.readValue(jsonResponse, AiProposalListDto.class);
-            return proposalList.proposals();
+
+            try {
+                // First try to parse as AiProposalListDto (object with proposals field)
+                AiProposalListDto proposalList = objectMapper.readValue(jsonResponse, AiProposalListDto.class);
+                return proposalList.proposals();
+            } catch (Exception e) {
+                // If that fails, try to parse directly as array of AiProposalDto
+                return objectMapper.readValue(jsonResponse, new TypeReference<List<AiProposalDto>>() {});
+            }
         } catch (Exception e) {
             throw new RuntimeException("Failed to parse AI suggestions", e);
         }

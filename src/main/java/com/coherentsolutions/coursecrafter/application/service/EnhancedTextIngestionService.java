@@ -51,7 +51,7 @@ public class EnhancedTextIngestionService {
     }
 
     /**
-     * Complete process for ingesting and integrating new content
+     * Enhanced content processing with additional context
      */
     public List<ContentNode> processContent(
             String rawContent,
@@ -59,23 +59,39 @@ public class EnhancedTextIngestionService {
             String audience,
             LocalDate reportDate) throws IOException, InterruptedException {
 
-        // 1. Clean and summarize with enhanced context
-        String cleanedContent = summarizationService.summarize(
-                rawContent, courseName, audience, reportDate);
+        // Use enhanced summarization if context is provided
+        String cleanedContent;
+        if (courseName != null && audience != null && reportDate != null) {
+            cleanedContent = summarizationService.summarize(rawContent, courseName, audience, reportDate);
+        } else {
+            cleanedContent = summarizationService.summarize(rawContent);
+        }
 
-        // 2. Analyze content and generate proposals
-        List<AiProposalDto> initialProposals = analyzerService.analyzeContent(cleanedContent, courseName);
+        // Use course-specific analysis if course name is provided
+        List<AiProposalDto> initialProposals;
+        if (courseName != null) {
+            initialProposals = analyzerService.analyzeContentForCourse(courseName, cleanedContent);
+        } else {
+            initialProposals = analyzerService.analyzeContent(cleanedContent);
+        }
 
         if (initialProposals.isEmpty()) {
             return List.of(); // Nothing to do
         }
 
-        // 3. Refine each proposal for better quality
+        // Refine each proposal for better quality
         List<AiProposalDto> refinedProposals = initialProposals.stream()
                 .map(proposal -> analyzerService.refineProposal(proposal, null))
                 .collect(Collectors.toList());
 
-        // 4. Apply the proposals to create/update content
+        // Apply the proposals to create/update content
         return updaterService.applyProposals(refinedProposals);
+    }
+
+    /**
+     * Original method for backward compatibility
+     */
+    public List<ContentNode> processContent(String rawContent) throws IOException, InterruptedException {
+        return processContent(rawContent, null, null, null);
     }
 }

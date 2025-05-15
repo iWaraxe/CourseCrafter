@@ -38,6 +38,13 @@ coursecrafter:
   import:
     # Enable/disable database import functionality
     # Set to true to perform the first-time import of lecture content
-    enabled: true
+    enabled: false
     # Override default import folder location (optional)
     folder: course_content
+
+logging:
+  level:
+    com.coherentsolutions.coursecrafter.application.api.ai: DEBUG
+    com.coherentsolutions.coursecrafter.application.service: DEBUG
+    com.coherentsolutions.coursecrafter.domain.content.service: DEBUG
+    # org.springframework.ai: DEBUG  # Optional: see Spring AI internals

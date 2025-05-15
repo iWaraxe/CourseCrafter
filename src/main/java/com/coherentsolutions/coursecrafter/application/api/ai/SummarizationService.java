@@ -60,4 +60,22 @@ public class SummarizationService {
                 .call()
                 .content();
     }
+
+    /**
+     * Basic summarization for backward compatibility
+     */
+    public String summarize(String markdown) {
+        return chatClient.prompt()
+                .system("""
+                    You are CourseCrafter AI. Convert the incoming text \
+                    into concise Markdown slides:
+                      • keep headings / lists / code blocks
+                      • remove greetings, applause, "thanks", etc.
+                      • aim for ≤ 15 tokens per bullet
+                    Return *only* Markdown.
+                    """)
+                .user(markdown)
+                .call()
+                .content();
+    }
 }
