@@ -1,4 +1,5 @@
 # Beginners AI. Mastering modern AI tools
+
 ## Lecture 1: Introduction to AI and Current Developments
 
 ### 1.1. Introduction: Understanding AI
@@ -1126,4 +1127,4 @@ As you continue through this course, let these resources guide your independent 
 ###### NOTES
 - Invite students to bring any interesting findings or tools to the next session.
 - Final joke: “That’s it for today. Now go out there and politely break a few AIs.”
----
+---_

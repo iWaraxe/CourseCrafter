@@ -88,33 +88,46 @@ public class MarkdownCourseParser {
     }
 
     private String extractContentNotCoveredByChildren(String parentContent, Pattern childHeaderPattern) {
-        StringBuilder remainingContent = new StringBuilder();
+        StringBuilder trulyDirectContent = new StringBuilder();
         Matcher childMatcher = childHeaderPattern.matcher(parentContent);
-        int lastChildEnd = 0;
+        int lastChildBlockEnd = 0;
 
         List<MatchResult> childMatches = childMatcher.results().collect(Collectors.toList());
 
+        if (childMatches.isEmpty()) {
+            return parentContent.trim(); // All content is direct
+        }
+
         for (int i = 0; i < childMatches.size(); i++) {
-            MatchResult currentChildMatch = childMatches.get(i);
-            if (currentChildMatch.start() > lastChildEnd) {
-                remainingContent.append(parentContent, lastChildEnd, currentChildMatch.start());
+            MatchResult currentChildMatchResult = childMatches.get(i);
+            int childBlockActualStart = currentChildMatchResult.start(); // Start of the header line itself
+
+            // Append content that was *before* the current child's header
+            if (childBlockActualStart > lastChildBlockEnd) {
+                trulyDirectContent.append(parentContent, lastChildBlockEnd, childBlockActualStart);
             }
 
-            int currentChildBlockEnd;
+            // Determine where this child's *entire block content* ends
+            int childBlockContentEnd;
             if (i + 1 < childMatches.size()) {
-                currentChildBlockEnd = childMatches.get(i + 1).start();
+                childBlockContentEnd = childMatches.get(i + 1).start(); // Ends where next sibling's header starts
             } else {
-                currentChildBlockEnd = parentContent.length();
+                childBlockContentEnd = parentContent.length(); // Last child, so its block goes to end of parent's content
             }
-            lastChildEnd = currentChildBlockEnd;
+            lastChildBlockEnd = childBlockContentEnd; // Advance pointer past this entire child block
         }
 
-        if (lastChildEnd < parentContent.length()) {
-            remainingContent.append(parentContent.substring(lastChildEnd));
+        // After processing all known child blocks, if there's any content left at the very end of parentContent
+        // that wasn't consumed by the last child block, it would be appended here.
+        // However, given extractBlocks() logic, the last child block should always consume up to parentContent.length().
+        // So, this final append might not be strictly needed if all blocks are perfectly contiguous.
+        // But it's safer to keep it if there could be trailing text after the last recognized block.
+        if (lastChildBlockEnd < parentContent.length()) {
+            trulyDirectContent.append(parentContent.substring(lastChildBlockEnd));
         }
-        return remainingContent.toString().trim();
+
+        return trulyDirectContent.toString().trim();
     }
-
 
     private void parseLectures(String courseContent, ContentNode courseNode) throws IOException, InterruptedException {
         List<Block> lectureBlocks = extractBlocks(courseContent, MarkdownPatterns.LECTURE_PATTERN);
@@ -166,33 +179,55 @@ public class MarkdownCourseParser {
 
     private void parseSections(String lectureContent, ContentNode lectureNode) throws IOException, InterruptedException {
         List<Block> sectionBlocks = extractBlocks(lectureContent, MarkdownPatterns.SECTION_PATTERN);
-        int sectionOrder = 10;
+        int sectionOrder = 10; // Fallback order if no number in title
 
         for (Block sectionBlock : sectionBlocks) {
             String sectionTitle = sectionBlock.getTitle().trim();
             log.debug("Processing Section Title: {}", sectionTitle);
 
-            String sectionNumberStr = extractNumericPrefix(sectionTitle, "\\d+(?:\\.\\d+)*");
-            if (sectionNumberStr.isEmpty()) {
-                sectionNumberStr = String.valueOf(sectionOrder / 10);
-            }
+            int currentLectureNumber = extractLectureNumber(lectureNode.getTitle()); // e.g., 1 for "Lecture 1"
 
-            String normalizedTitle = normalizeTitle(sectionTitle);
+            // Extracts "1.1" from "1.1. Section Title" or "1" from "1. Section Title"
+            String sectionNumberingInTitle = extractNumericPrefix(sectionTitle, "\\d+(?:\\.\\d+)*");
+
+            String finalSectionNodeNumber;
+            if (!sectionNumberingInTitle.isEmpty()) {
+                // If title is "1.1. Section Title" and currentLectureNumber is 1, we want "1.1"
+                // If title is "2.1. Section Title" but currentLectureNumber is 1 (mismatch), we might prioritize title or flag error.
+                // For now, assume if a number is present, it's the intended L.S or S part.
+                if (sectionNumberingInTitle.matches("^" + currentLectureNumber + "\\.\\d+.*")) { // Title is "L.S..."
+                    finalSectionNodeNumber = sectionNumberingInTitle; // Use "L.S" from title directly
+                } else if (sectionNumberingInTitle.matches("^\\d+$")) { // Title is "S. Section Title"
+                    finalSectionNodeNumber = currentLectureNumber + "." + sectionNumberingInTitle; // Construct L.S
+                } else if (sectionNumberingInTitle.matches("^\\d+\\.\\d+.*")) { // Title is "X.Y Section Title" (potentially L.S or S1.S2)
+                    // If it does not start with currentLectureNumber, it's likely S1.S2 relative to current lecture
+                    finalSectionNodeNumber = currentLectureNumber + "." + sectionNumberingInTitle;
+                }
+                else {
+                    // Fallback if numbering is unusual, e.g. just "Section Title" after stripping
+                    finalSectionNodeNumber = currentLectureNumber + "." + (sectionOrder / 10);
+                    log.warn("Section title '{}' had unusual numbering '{}', using order-based: {}", sectionTitle, sectionNumberingInTitle, finalSectionNodeNumber);
+                }
+            } else {
+                finalSectionNodeNumber = currentLectureNumber + "." + (sectionOrder / 10);
+            }
+            finalSectionNodeNumber = finalSectionNodeNumber.replaceAll("\\.+", ".").replaceFirst("\\.$", "");
+
+
+            String normalizedTitle = normalizeTitle(sectionTitle); // normalizeTitle strips leading numbers
             if (isDuplicateChild(lectureNode, normalizedTitle, ContentNode.NodeType.SECTION)) {
                 log.info("Skipping duplicate section: {}", sectionTitle);
+                sectionOrder += 10; // still increment for next non-duplicate
                 continue;
             }
-
-            String lectureNumberFromPath = extractNumberFromPathSegment(lectureNode.getPath(), "/Lecture/(\\d+)");
-            int lectureNumber = extractLectureNumber(lectureNode.getTitle());
 
             ContentNode sectionNode = ContentNode.builder()
                     .nodeType(ContentNode.NodeType.SECTION)
                     .parent(lectureNode)
-                    .title(sectionTitle)
-                    .nodeNumber(lectureNumber + "." + sectionNumberStr)
-                    .displayOrder(sectionOrder)
-                    .path(lectureNode.getPath() + "/Section/" + sectionNumberStr.replace(".", "_"))
+                    .title(sectionTitle) // Store full title
+                    .nodeNumber(finalSectionNodeNumber)
+                    .displayOrder(sectionOrder) // This order is within the lecture
+                    .path(lectureNode.getPath() + "/Section/" + finalSectionNodeNumber.replace(".", "_"))
                     .createdAt(LocalDateTime.now())
                     .updatedAt(LocalDateTime.now())
                     .build();
@@ -217,51 +252,44 @@ public class MarkdownCourseParser {
 
         for (Block topicBlock : topicBlocks) {
             String topicTitle = topicBlock.getTitle().trim();
-            log.debug("Processing Topic Title: '{}' under section '{}'", topicTitle, sectionNode.getTitle());
+            log.debug("Processing Topic Title: '{}' under section '{}' ({})", topicTitle, sectionNode.getTitle(), sectionNode.getNodeNumber());
 
             String sectionNodeNumber = sectionNode.getNodeNumber();
             if (sectionNodeNumber == null || sectionNodeNumber.isEmpty()) {
-                // Fallback if section number isn't set (e.g., for implicit sections)
                 log.warn("Section node '{}' (ID: {}) has a null or empty nodeNumber. Attempting fallback for topic numbering.", sectionNode.getTitle(), sectionNode.getId());
                 ContentNode lectureOfSection = sectionNode.getParent();
-                if (lectureOfSection != null) {
-                    int lectNum = extractLectureNumber(lectureOfSection.getTitle());
-                    // This is an implicit section, its order might be based on existing implicit sections or a fixed value
-                    sectionNodeNumber = lectNum + "." + (sectionNode.getDisplayOrder() / 10);
-                } else {
-                    sectionNodeNumber = "0.0"; // Ultimate fallback
-                }
+                int lectNum = (lectureOfSection != null) ? extractLectureNumber(lectureOfSection.getTitle()) : 0;
+                sectionNodeNumber = lectNum + "." + (sectionNode.getDisplayOrder() / 10); // Approximate
                 log.warn("Using fallback sectionNodeNumber for topic processing: {}", sectionNodeNumber);
             }
 
-            // Try to extract number like "X.Y.Z" or "X.Y" or "X" from the topic title.
-            // If the title starts with the sectionNodeNumber (e.g., "1.1.1 My Topic" for section "1.1"),
-            // then topicNumberFromTitle should be just "1" (the last segment).
-            String topicNumberSegmentFromTitle = extractNumericPrefix(topicTitle, "\\d+(\\.\\d+){0,2}", sectionNodeNumber);
+            // Try to extract the topic's own segment number (T in L.S.T) from its title,
+            // after notionally stripping the L.S. prefix if present.
+            // e.g., if section is "1.1" and topic title is "1.1.1. My Topic", this should extract "1".
+            // e.g., if section is "1.1" and topic title is "1. My Topic", this should extract "1".
+            String topicOwnNumberSegment = extractNumericPrefix(topicTitle, "\\d+", sectionNodeNumber); // Regex for T is just \d+
 
+            if (topicOwnNumberSegment.isEmpty()) {
+                // If not found after stripping, try extracting from original title (could be "1.2. Topic")
+                topicOwnNumberSegment = extractNumericPrefix(topicTitle, "\\d+(?:\\.\\d+){0,1}"); // Extracts S.T or T
+                if (!topicOwnNumberSegment.isEmpty() && topicOwnNumberSegment.contains(".")) { // If it's S.T like "1.2"
+                    // We only want the T part
+                    topicOwnNumberSegment = topicOwnNumberSegment.substring(topicOwnNumberSegment.lastIndexOf('.') + 1);
+                }
+            }
 
-            String finalTopicNumberStr;
-            if (!topicNumberSegmentFromTitle.isEmpty()) {
-                // The title contained a number, possibly relative or absolute.
-                // If extractNumericPrefix stripped the sectionNodeNumber, topicNumberSegmentFromTitle is the T part.
-                finalTopicNumberStr = sectionNodeNumber + "." + topicNumberSegmentFromTitle;
+            String finalTopicNodeNumber;
+            if (!topicOwnNumberSegment.isEmpty()) {
+                finalTopicNodeNumber = sectionNodeNumber + "." + topicOwnNumberSegment;
             } else {
-                // No number in title, or it wasn't in a recognizable X.Y.Z format after stripping prefix.
-                // So, we generate based on order.
-                finalTopicNumberStr = sectionNodeNumber + "." + (topicOrder / 10);
+                finalTopicNodeNumber = sectionNodeNumber + "." + (topicOrder / 10);
             }
-
-            // Normalize the final topic number string to ensure it doesn't have too many dots if logic above misfired
-            // e.g. prevent 1.1..1 if sectionNodeNumber already ended with dot and topicNumberSegmentFromTitle started with one (though regex should prevent)
-            finalTopicNumberStr = finalTopicNumberStr.replaceAll("\\.+", "."); // Replace multiple dots with single
-            if (finalTopicNumberStr.endsWith(".")) { // Remove trailing dot
-                finalTopicNumberStr = finalTopicNumberStr.substring(0, finalTopicNumberStr.length() -1);
-            }
+            finalTopicNodeNumber = finalTopicNodeNumber.replaceAll("\\.+", ".").replaceFirst("\\.$", "");
 
 
-            String normalizedTitle = normalizeTitle(topicTitle);
+            String normalizedTitle = normalizeTitle(topicTitle); // normalizeTitle strips all leading numbers
             if (isDuplicateChild(sectionNode, normalizedTitle, ContentNode.NodeType.TOPIC)) {
-                log.info("Skipping duplicate topic: {}", topicTitle);
+                log.info("Skipping duplicate topic with normalized title: '{}' under parent {}", normalizedTitle, sectionNode.getTitle());
                 topicOrder += 10;
                 continue;
             }
@@ -270,9 +298,9 @@ public class MarkdownCourseParser {
                     .nodeType(ContentNode.NodeType.TOPIC)
                     .parent(sectionNode)
                     .title(topicTitle)
-                    .nodeNumber(finalTopicNumberStr)
+                    .nodeNumber(finalTopicNodeNumber)
                     .displayOrder(topicOrder)
-                    .path(sectionNode.getPath() + "/Topic/" + finalTopicNumberStr.replace(".", "_"))
+                    .path(sectionNode.getPath() + "/Topic/" + finalTopicNodeNumber.replace(".", "_"))
                     .createdAt(LocalDateTime.now())
                     .updatedAt(LocalDateTime.now())
                     .build();
