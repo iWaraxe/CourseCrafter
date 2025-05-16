@@ -5,7 +5,10 @@ import com.coherentsolutions.coursecrafter.domain.content.repository.ContentNode
 import com.coherentsolutions.coursecrafter.domain.content.service.ContentNodeService;
 import com.coherentsolutions.coursecrafter.domain.slide.model.SlideComponent;
 import com.coherentsolutions.coursecrafter.domain.slide.service.SlideComponentService;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
@@ -157,55 +160,71 @@ public class MarkdownCourseParser {
      * Parse sections (h3) under a lecture
      */
     private void parseSections(String content, ContentNode lectureNode) throws IOException, InterruptedException {
-        Matcher sectionMatcher = MarkdownPatterns.SECTION_PATTERN.matcher(content);
-        int sectionOrder = 10;
+        // Create a list to store all matched sections with their start/end positions
+        List<SectionInfo> sections = new ArrayList<>();
 
+        Matcher sectionMatcher = MarkdownPatterns.SECTION_PATTERN.matcher(content);
         while (sectionMatcher.find()) {
             String sectionTitle = sectionMatcher.group(1).trim();
+            sections.add(new SectionInfo(
+                    sectionMatcher.start(),
+                    sectionTitle,
+                    ContentNode.NodeType.SECTION
+            ));
+        }
 
-            // Find the start position of this section
-            int sectionStart = sectionMatcher.start();
+        // Sort sections by their position in the document
+        sections.sort(Comparator.comparingInt(SectionInfo::getPosition));
 
-            // Find where this section ends (next section or EOF)
-            int sectionEnd = content.length();
-            sectionMatcher.region(sectionMatcher.end(), content.length());
-            if (sectionMatcher.find()) {
-                sectionEnd = sectionMatcher.start();
-                // Reset the region for the next iteration
-                sectionMatcher.region(sectionEnd, content.length());
-            } else {
-                // Reset matcher to continue from where we left off
-                sectionMatcher = MarkdownPatterns.SECTION_PATTERN.matcher(content);
-                sectionMatcher.region(sectionStart + 1, content.length());
-            }
+        // Calculate end positions
+        for (int i = 0; i < sections.size() - 1; i++) {
+            sections.get(i).setEndPosition(sections.get(i + 1).getPosition());
+        }
+        if (!sections.isEmpty()) {
+            sections.get(sections.size() - 1).setEndPosition(content.length());
+        }
 
-            // Extract section content
-            String sectionContent = content.substring(sectionStart, sectionEnd);
-
+        // Now process sections in order
+        int sectionOrder = 10;
+        for (SectionInfo sectionInfo : sections) {
             // Create section node
             ContentNode sectionNode = ContentNode.builder()
-                    .nodeType(ContentNode.NodeType.SECTION)
+                    .nodeType(sectionInfo.getNodeType())
                     .parent(lectureNode)
-                    .title(sectionTitle)
+                    .title(sectionInfo.getTitle())
                     .displayOrder(sectionOrder)
                     .path(lectureNode.getPath() + "/Section/" + sectionOrder)
                     .createdAt(LocalDateTime.now())
                     .updatedAt(LocalDateTime.now())
                     .build();
 
+            // Extract section content
+            String sectionContent = content.substring(sectionInfo.getPosition(), sectionInfo.getEndPosition());
+
             sectionNode = contentNodeService.createNode(sectionNode,
                     sectionContent,
-                    "Created section: " + sectionTitle);
-            log.info("Created section: {} with order {}", sectionTitle, sectionOrder);
+                    "Created section: " + sectionInfo.getTitle());
 
-            // Parse topics within the section
+            // Process topics within this section
             parseTopics(sectionContent, sectionNode);
 
             // Also check for slides directly under the section
-            parseSlides(sectionContent, sectionNode);
+            parseDirectSlides(sectionContent, sectionNode);
 
             sectionOrder += 10;
         }
+    }
+
+    // Helper class to track sections
+    @Getter
+    @Setter
+    @RequiredArgsConstructor
+    @AllArgsConstructor
+    private static class SectionInfo {
+        private final int position;
+        private int endPosition;
+        private final String title;
+        private final ContentNode.NodeType nodeType;
     }
 
     /**
