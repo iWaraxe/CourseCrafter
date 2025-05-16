@@ -4,8 +4,8 @@ spring:
 
   datasource:
     url: jdbc:postgresql://localhost:5432/coursecrafter
-    username: coursecrafter
-    password: 19_secret_78
+    username: ${COURSE_CRAFTER_LOGIN} # read from env-var
+    password: ${COURSE_CRAFTER_PASS} # read from env-var
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
