@@ -119,24 +119,28 @@ public class MarkdownCourseParser {
     private void parseLectures(String courseContent, ContentNode courseNode) throws IOException, InterruptedException {
         List<Block> lectureBlocks = extractBlocks(courseContent, MarkdownPatterns.LECTURE_PATTERN);
 
+        // int lectureCounter = 1; // If lecture numbers cannot be reliably extracted from titles
         for (Block lectureBlock : lectureBlocks) {
             String lectureTitle = lectureBlock.getTitle().trim();
             log.debug("Processing Lecture Title: {}", lectureTitle);
 
-            int lectureNumber = extractLectureNumber(lectureTitle);
-            int displayOrder = lectureNumber * 10;
+            int lectureNumberFromTitle = extractLectureNumber(lectureTitle); // Existing good method
+            // int displayOrder = lectureCounter * 10; // Use counter if numbers aren't strict
+            int displayOrder = lectureNumberFromTitle * 10;
+
 
             ContentNode lectureNode = ContentNode.builder()
                     .nodeType(ContentNode.NodeType.LECTURE)
                     .parent(courseNode)
                     .title(lectureTitle)
                     .displayOrder(displayOrder)
-                    .path(courseNode.getPath() + "/Lecture/" + lectureNumber)
+                    // Use the extracted number for the path
+                    .path(courseNode.getPath() + "/Lecture/" + lectureNumberFromTitle) // MODIFIED
                     .createdAt(LocalDateTime.now())
                     .updatedAt(LocalDateTime.now())
                     .build();
             lectureNode = contentNodeService.createNode(lectureNode, lectureBlock.getFullBlockContent(), "Created lecture: " + lectureTitle);
-            log.info("Created lecture: {} with order {}", lectureTitle, displayOrder);
+            log.info("Created lecture: {} with order {} and path {}", lectureTitle, displayOrder, lectureNode.getPath()); // Log path
 
             parseSections(lectureBlock.getContentWithinBlock(), lectureNode);
 
@@ -146,6 +150,7 @@ public class MarkdownCourseParser {
             if (!directLectureContent.trim().isEmpty()) {
                 parseDirectSlides(directLectureContent, lectureNode, "lecture");
             }
+            // lectureCounter++;
         }
     }
 
@@ -211,29 +216,31 @@ public class MarkdownCourseParser {
 
         for (Block topicBlock : topicBlocks) {
             String topicTitle = topicBlock.getTitle().trim();
-            log.debug("Processing Topic Title: {}", topicTitle);
+            log.debug("Processing Topic Title: '{}' under section '{}'", topicTitle, sectionNode.getTitle());
 
-            String topicNumberStr = extractNumericPrefix(topicTitle, "\\d+(?:\\.\\d+){1,}");
-            String baseSectionNodeNumber = sectionNode.getNodeNumber() != null ? sectionNode.getNodeNumber() : "0"; // Fallback for sectionNodeNumber
+            String sectionNodeNumber = sectionNode.getNodeNumber() != null ? sectionNode.getNodeNumber() : "0.0"; // Fallback
 
-            if (topicNumberStr.isEmpty()) {
-                topicNumberStr = baseSectionNodeNumber + "." + (topicOrder / 10);
-            } else if (!topicNumberStr.startsWith(baseSectionNodeNumber + ".")) {
-                // If topic number "1.1" and section is "2", this might be an issue.
-                // For "1.1" from title "1.1. Brief History" under section "1. Introduction",
-                // if sectionNodeNumber is "1", then topicNumberStr might become "1.1" directly.
-                // If title is "1. Brief History" (missing sub-number) under section "1.1", make it "1.1.1"
-                Pattern sectionPrefixPattern = Pattern.compile("^" + Pattern.quote(baseSectionNodeNumber) + "\\.");
-                if (!sectionPrefixPattern.matcher(topicNumberStr).find()) {
-                    // If the topic number from title doesn't already include the full section prefix
-                    topicNumberStr = baseSectionNodeNumber + "." + topicNumberStr;
+            // Try to get number like "X.Y" or "X.Y.Z" from topic title itself
+            String topicNumberFromTitle = extractNumericPrefix(topicTitle, "\\d+(?:\\.\\d+)*");
+
+            String finalTopicNumberStr;
+            if (!topicNumberFromTitle.isEmpty()) {
+                // If title has "1.1 ..." and section is "1.1", this could be "1.1.1" or "1.1" depending on convention.
+                // Assuming title number is relative to section if it doesn't already start with section's number.
+                if (topicNumberFromTitle.startsWith(sectionNodeNumber + ".")) {
+                    finalTopicNumberStr = topicNumberFromTitle; // Title number is already absolute
+                } else {
+                    // Title is "1.1 Some Topic" and section number "2.3". Topic number becomes "2.3.1.1"
+                    finalTopicNumberStr = sectionNodeNumber + "." + topicNumberFromTitle;
                 }
+            } else {
+                finalTopicNumberStr = sectionNodeNumber + "." + (topicOrder / 10);
             }
-
 
             String normalizedTitle = normalizeTitle(topicTitle);
             if (isDuplicateChild(sectionNode, normalizedTitle, ContentNode.NodeType.TOPIC)) {
                 log.info("Skipping duplicate topic: {}", topicTitle);
+                topicOrder += 10; // Still increment order to avoid issues with next non-duplicate
                 continue;
             }
 
@@ -241,9 +248,9 @@ public class MarkdownCourseParser {
                     .nodeType(ContentNode.NodeType.TOPIC)
                     .parent(sectionNode)
                     .title(topicTitle)
-                    .nodeNumber(topicNumberStr)
+                    .nodeNumber(finalTopicNumberStr) // Use the constructed number
                     .displayOrder(topicOrder)
-                    .path(sectionNode.getPath() + "/Topic/" + topicNumberStr.replace(".", "_"))
+                    .path(sectionNode.getPath() + "/Topic/" + finalTopicNumberStr.replace(".", "_"))
                     .createdAt(LocalDateTime.now())
                     .updatedAt(LocalDateTime.now())
                     .build();
@@ -256,12 +263,11 @@ public class MarkdownCourseParser {
                     topicBlock.getContentWithinBlock(), MarkdownPatterns.SLIDE_PATTERN
             );
             if(!directTopicContent.trim().isEmpty()){
-                log.debug("Topic '{}' has direct content not part of any slide: {}", topicTitle, directTopicContent.substring(0, Math.min(directTopicContent.length(), 50)));
+                log.debug("Topic '{}' has direct content not part of any slide (first 50 chars): '{}'", topicTitle, directTopicContent.substring(0, Math.min(directTopicContent.length(), 50)));
             }
             topicOrder += 10;
         }
     }
-
 
     private void parseSlides(String parentBlockContent, ContentNode parentNode) throws IOException, InterruptedException { // MODIFIED: param name
         Matcher slideMatcher = MarkdownPatterns.SLIDE_PATTERN.matcher(parentBlockContent); // MODIFIED: use parentBlockContent
@@ -270,7 +276,7 @@ public class MarkdownCourseParser {
         while (slideMatcher.find()) {
             String seqNumber = slideMatcher.group(1).trim();
             String slideTitle = slideMatcher.group(2).trim();
-            String slideBodyContent = slideMatcher.group(3) != null ? slideMatcher.group(3).trim() : "";
+            String slideBodyContent = slideMatcher.group(3) != null ? slideMatcher.group(3).trim() : ""; // Group 3 is the content
             String fullSlideMarkdown = slideMatcher.group(0).trim();
 
             log.debug("Found Slide candidate: seq={}, title='{}', content length={}", seqNumber, slideTitle, slideBodyContent.length());
@@ -312,7 +318,7 @@ public class MarkdownCourseParser {
             try {
                 slideNode = contentNodeService.createNode(slideNode, fullSlideMarkdown, "Created slide: " + slideTitle);
                 log.info("Created slide: '{}' with sequence {} and number {}", slideTitle, seqNumber, slideNode.getNodeNumber());
-                processSlideComponents(slideBodyContent, slideNode);
+                processSlideComponents(slideBodyContent, slideNode); // PASS slideBodyContent HERE
             } catch (Exception e) {
                 log.error("Failed to create slide '{}' or its components: {}", slideTitle, e.getMessage(), e);
             }
@@ -553,20 +559,6 @@ public class MarkdownCourseParser {
                 .anyMatch(child -> child.getNodeType() == childType &&
                         normalizeTitle(child.getTitle()).equals(normalizedChildTitle));
     }
-
-    // SectionInfo might not be needed anymore. If not, remove its imports (Comparator, AllArgsConstructor, Setter)
-    /*
-    @Getter
-    @Setter
-    @RequiredArgsConstructor
-    @AllArgsConstructor
-    private static class SectionInfo {
-        private final int position;
-        private int endPosition;
-        private final String title;
-        private final ContentNode.NodeType nodeType;
-    }
-    */
 
     @Getter
     private static class SlideData {

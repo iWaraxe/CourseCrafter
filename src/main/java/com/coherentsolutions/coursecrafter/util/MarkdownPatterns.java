@@ -17,48 +17,36 @@ public final class MarkdownPatterns {
     public static final Pattern TOPIC_PATTERN = Pattern.compile("^####\\s+([^\\n]+?)\\s*$", Pattern.MULTILINE);
 
     /**
-     * This pattern is specifically designed to capture slide headers (H5) and their content.
+     * SLIDE_PATTERN:
      * Group 1: Sequence number (e.g., "010")
-     * Group 2: Slide title
-     * Group 3: Complete slide content, starting from the line after the H5 header,
-     *          until the next slide, a higher-level header (H1-H4), a '---' separator, or end of input.
+     * Group 2: Slide title (everything on the H5 line after [seq:xxx])
+     * Group 3: Slide body content (everything AFTER the H5 line, until a terminator)
+     * Terminators: Next H5, H4, H3, H2, H1, '---' separator, or end of current parsing block.
      */
     public static final Pattern SLIDE_PATTERN = Pattern.compile(
-            "^#####\\s+\\[seq:(\\d+)\\]\\s*([^\\n]+?)\\s*" + // Group 1: seq, Group 2: title
-                    "(?:" + // Non-capturing group for content start options
-                    "\\r?\\n(.*?)" +  // Content starts on a new line (Group 3 is here)
-                    "|" +             // OR
-                    "()" +            // Content is empty or not present (Group 3 will be empty string match)
-                    ")?" + // The whole content block is optional
-                    "(?=" + // Positive lookahead for terminators
-                    "\\Z|" +                                 // End of the current input block (e.g., end of topic content)
-                    "|^#####\\s+\\[seq:\\d+\\]|" +           // Start of the next H5 slide
-                    "|^\\s*---\\s*$|" +                     // A '---' separator line
-                    "|^#{1,4}\\s" +                         // Start of any H1, H2, H3, or H4 heading
-                    ")",
-            Pattern.MULTILINE | Pattern.DOTALL // MULTILINE for '^', DOTALL for '.' in (.*?)
+            // Start of line, H5, space, [seq:digits], space, title
+            "^#####\\s+\\[seq:(\\d+)\\]\\s+([^\\n]+?)\\s*$" + // Group 1 (seq), Group 2 (title). Ensures title is the rest of the H5 line.
+                    // Content block (Group 3): Optional, starts on a new line.
+                    "(?:\\r?\\n(.*?))?" + // Non-capturing group for the newline and content. Group 3 is (.*?).
+                    // Positive lookahead for terminators.
+                    "(?=\\Z|^#####\\s+\\[seq:\\d+\\]|^\\s*---\\s*$|^#{1,4}\\s)",
+            Pattern.MULTILINE | Pattern.DOTALL
     );
 
     /**
-     * This pattern matches individual slide components (H6) with their content.
-     * It's designed to capture each component type and its content separately.
-     * This pattern should operate on the content of a single slide (output of SLIDE_PATTERN group 3).
-     * Group 1: Component type (e.g., "SCRIPT", "VISUAL")
-     * Group 2: Component content, starting from the line after the H6 header,
-     *          until the next component header or end of the slide's content.
+     * COMPONENT_PATTERN:
+     * Group 1: Component type (SCRIPT, VISUAL, NOTES, DEMONSTRATION)
+     * Group 2: Component content (everything AFTER the H6 line, until next H6 or end of slide body)
+     * This pattern operates on the slide body content (Group 3 from SLIDE_PATTERN).
      */
     public static final Pattern COMPONENT_PATTERN = Pattern.compile(
-            "^######\\s+(SCRIPT|VISUAL|NOTES|DEMONSTRATION)\\s*" + // Group 1: component type
-                    "(?:" + // Non-capturing group for content start options
-                    "\\r?\\n(.*?)" +  // Content starts on a new line (Group 2 is here)
-                    "|" +             // OR
-                    "()" +            // Content is empty or not present (Group 2 will be empty string match)
-                    ")?" + // The whole content block is optional
-                    "(?=" + // Positive lookahead for terminators
-                    "\\Z|" +                                             // End of the slide content block
-                    "|^######\\s+(?:SCRIPT|VISUAL|NOTES|DEMONSTRATION)" + // Start of the next H6 component
-                    ")",
-            Pattern.MULTILINE | Pattern.DOTALL // MULTILINE for '^', DOTALL for '.' in (.*?)
+            // Start of line (within slide body), H6, space, type
+            "^######\\s+(SCRIPT|VISUAL|NOTES|DEMONSTRATION)\\s*$" + // Group 1 (type). Ensures type is the only thing on H6 line.
+                    // Content block (Group 2): Optional, starts on a new line.
+                    "(?:\\r?\\n(.*?))?" + // Non-capturing group for newline and content. Group 2 is (.*?).
+                    // Positive lookahead for terminators.
+                    "(?=\\Z|^######\\s+(?:SCRIPT|VISUAL|NOTES|DEMONSTRATION))",
+            Pattern.MULTILINE | Pattern.DOTALL
     );
 
     // Table structure pattern - remains basic as it's not the focus of current issues.
