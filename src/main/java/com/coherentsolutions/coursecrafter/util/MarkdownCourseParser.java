@@ -184,12 +184,13 @@ public class MarkdownCourseParser {
             }
 
             String lectureNumberFromPath = extractNumberFromPathSegment(lectureNode.getPath(), "/Lecture/(\\d+)");
+            int lectureNumber = extractLectureNumber(lectureNode.getTitle());
 
             ContentNode sectionNode = ContentNode.builder()
                     .nodeType(ContentNode.NodeType.SECTION)
                     .parent(lectureNode)
                     .title(sectionTitle)
-                    .nodeNumber(lectureNumberFromPath + "." + sectionNumberStr)
+                    .nodeNumber(lectureNumber + "." + sectionNumberStr)
                     .displayOrder(sectionOrder)
                     .path(lectureNode.getPath() + "/Section/" + sectionNumberStr.replace(".", "_"))
                     .createdAt(LocalDateTime.now())
@@ -218,29 +219,50 @@ public class MarkdownCourseParser {
             String topicTitle = topicBlock.getTitle().trim();
             log.debug("Processing Topic Title: '{}' under section '{}'", topicTitle, sectionNode.getTitle());
 
-            String sectionNodeNumber = sectionNode.getNodeNumber() != null ? sectionNode.getNodeNumber() : "0.0"; // Fallback
+            String sectionNodeNumber = sectionNode.getNodeNumber();
+            if (sectionNodeNumber == null || sectionNodeNumber.isEmpty()) {
+                // Fallback if section number isn't set (e.g., for implicit sections)
+                log.warn("Section node '{}' (ID: {}) has a null or empty nodeNumber. Attempting fallback for topic numbering.", sectionNode.getTitle(), sectionNode.getId());
+                ContentNode lectureOfSection = sectionNode.getParent();
+                if (lectureOfSection != null) {
+                    int lectNum = extractLectureNumber(lectureOfSection.getTitle());
+                    // This is an implicit section, its order might be based on existing implicit sections or a fixed value
+                    sectionNodeNumber = lectNum + "." + (sectionNode.getDisplayOrder() / 10);
+                } else {
+                    sectionNodeNumber = "0.0"; // Ultimate fallback
+                }
+                log.warn("Using fallback sectionNodeNumber for topic processing: {}", sectionNodeNumber);
+            }
 
-            // Try to get number like "X.Y" or "X.Y.Z" from topic title itself
-            String topicNumberFromTitle = extractNumericPrefix(topicTitle, "\\d+(?:\\.\\d+)*");
+            // Try to extract number like "X.Y.Z" or "X.Y" or "X" from the topic title.
+            // If the title starts with the sectionNodeNumber (e.g., "1.1.1 My Topic" for section "1.1"),
+            // then topicNumberFromTitle should be just "1" (the last segment).
+            String topicNumberSegmentFromTitle = extractNumericPrefix(topicTitle, "\\d+(\\.\\d+){0,2}", sectionNodeNumber);
+
 
             String finalTopicNumberStr;
-            if (!topicNumberFromTitle.isEmpty()) {
-                // If title has "1.1 ..." and section is "1.1", this could be "1.1.1" or "1.1" depending on convention.
-                // Assuming title number is relative to section if it doesn't already start with section's number.
-                if (topicNumberFromTitle.startsWith(sectionNodeNumber + ".")) {
-                    finalTopicNumberStr = topicNumberFromTitle; // Title number is already absolute
-                } else {
-                    // Title is "1.1 Some Topic" and section number "2.3". Topic number becomes "2.3.1.1"
-                    finalTopicNumberStr = sectionNodeNumber + "." + topicNumberFromTitle;
-                }
+            if (!topicNumberSegmentFromTitle.isEmpty()) {
+                // The title contained a number, possibly relative or absolute.
+                // If extractNumericPrefix stripped the sectionNodeNumber, topicNumberSegmentFromTitle is the T part.
+                finalTopicNumberStr = sectionNodeNumber + "." + topicNumberSegmentFromTitle;
             } else {
+                // No number in title, or it wasn't in a recognizable X.Y.Z format after stripping prefix.
+                // So, we generate based on order.
                 finalTopicNumberStr = sectionNodeNumber + "." + (topicOrder / 10);
             }
+
+            // Normalize the final topic number string to ensure it doesn't have too many dots if logic above misfired
+            // e.g. prevent 1.1..1 if sectionNodeNumber already ended with dot and topicNumberSegmentFromTitle started with one (though regex should prevent)
+            finalTopicNumberStr = finalTopicNumberStr.replaceAll("\\.+", "."); // Replace multiple dots with single
+            if (finalTopicNumberStr.endsWith(".")) { // Remove trailing dot
+                finalTopicNumberStr = finalTopicNumberStr.substring(0, finalTopicNumberStr.length() -1);
+            }
+
 
             String normalizedTitle = normalizeTitle(topicTitle);
             if (isDuplicateChild(sectionNode, normalizedTitle, ContentNode.NodeType.TOPIC)) {
                 log.info("Skipping duplicate topic: {}", topicTitle);
-                topicOrder += 10; // Still increment order to avoid issues with next non-duplicate
+                topicOrder += 10;
                 continue;
             }
 
@@ -248,7 +270,7 @@ public class MarkdownCourseParser {
                     .nodeType(ContentNode.NodeType.TOPIC)
                     .parent(sectionNode)
                     .title(topicTitle)
-                    .nodeNumber(finalTopicNumberStr) // Use the constructed number
+                    .nodeNumber(finalTopicNumberStr)
                     .displayOrder(topicOrder)
                     .path(sectionNode.getPath() + "/Topic/" + finalTopicNumberStr.replace(".", "_"))
                     .createdAt(LocalDateTime.now())
@@ -431,9 +453,13 @@ public class MarkdownCourseParser {
         String childNodeNumber;
         String parentNodeNumber = parent.getNodeNumber();
         if (parentNodeNumber != null && !parentNodeNumber.isEmpty()) {
-            childNodeNumber = parentNodeNumber + ".implicit";
+            // For implicit section under Lecture "4", nodeNumber becomes "4.implicit-section"
+            // For implicit topic under Section "4.1", nodeNumber becomes "4.1.implicit-topic"
+            childNodeNumber = parentNodeNumber + ".implicit-" + childType.toString().toLowerCase();
         } else {
-            childNodeNumber = "Implicit." + childType.toString().toLowerCase();
+            // This case should ideally not happen if parent is Course/Lecture/Section with proper numbering
+            childNodeNumber = "implicit." + childType.toString().toLowerCase();
+            log.warn("Parent '{}' for implicit {} child had no node number.", parent.getTitle(), childType);
         }
 
         ContentNode implicitChild = ContentNode.builder()
@@ -534,8 +560,20 @@ public class MarkdownCourseParser {
     }
 
     private String extractNumericPrefix(String title, String numberPatternRegex) {
+        return extractNumericPrefix(title, numberPatternRegex, null);
+    }
+
+    private String extractNumericPrefix(String title, String numberPatternRegex, String knownPrefixToStrip) {
+        String effectiveTitle = title;
+        if (knownPrefixToStrip != null && !knownPrefixToStrip.isEmpty() && title.startsWith(knownPrefixToStrip)) {
+            effectiveTitle = title.substring(knownPrefixToStrip.length()).trim();
+            // Also remove a potential dot and space after stripping prefix, e.g., if title was "1.1. 1. Topic"
+            effectiveTitle = effectiveTitle.replaceFirst("^\\.\\s*", "").trim();
+
+        }
+
         Pattern pattern = Pattern.compile("^(" + numberPatternRegex + ")\\.?\\s+");
-        Matcher matcher = pattern.matcher(title);
+        Matcher matcher = pattern.matcher(effectiveTitle);
         if (matcher.find()) {
             return matcher.group(1);
         }

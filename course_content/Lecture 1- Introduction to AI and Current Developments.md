@@ -1,10 +1,9 @@
-# BasicAICourse
+# Beginners AI. Mastering modern AI tools
+## Lecture 1: Introduction to AI and Current Developments
 
-## Lecture 1. Introduction to AI and Current Developments
+### 1.1. Introduction: Understanding AI
 
-### 1. Introduction: Understanding AI
-
-#### 1.1. Brief history of AI (1960s–2025), emphasizing major developments
+#### 1.1.1. Brief history of AI (1960s–2025)
 
 ##### [seq:010] ELIZA (1960s), Statistical models (1990s), Neural Networks (2010s), Transformer Era (2017 onward), Multimodal and Autonomous AI systems (2025)
 
@@ -21,12 +20,12 @@ From this point, we saw GPTs, BERT, and more. The leap from GPT-2 to GPT-4 is ak
 _Title: "From ELIZA to Autonomous AI (1960s–2025)"_
 
 - A timeline graphic:
-    - 1960s: ELIZA (Rule-based)
-    - 1990s: Statistical Models (IBM MT)
-    - 2010s: Neural Nets (Deep Learning, Google Translate)
-    - 2017: Transformer Architecture ("Attention is All You Need")
-    - 2018-2023: GPT-2, GPT-3, GPT-4 (LLMs)
-    - 2025: Multimodal & Agentic AI (Gemini 2.0, GPT-4 Turbo, Claude 3)
+  - 1960s: ELIZA (Rule-based)
+  - 1990s: Statistical Models (IBM MT)
+  - 2010s: Neural Nets (Deep Learning, Google Translate)
+  - 2017: Transformer Architecture ("Attention is All You Need")
+  - 2018-2023: GPT-2, GPT-3, GPT-4 (LLMs)
+  - 2025: Multimodal & Agentic AI (Gemini 2.0, GPT-4 Turbo, Claude 3)
 
 ###### NOTES
 - [ELIZA Demo](https://web.njit.edu/~ronkowit/eliza.html) — an old but gold demo.
@@ -72,7 +71,9 @@ Prompt ChatGPT with:
 
 ---
 
-### 2. Major AI Systems Overview
+### 1.2. Major AI Systems Overview
+
+#### 1.2.1. Commercial Cloud-Based LLMs
 
 ##### [seq:030] OpenAI (ChatGPT)
 
@@ -94,6 +95,7 @@ ChatGPT is now multimodal—it can analyze images, documents, and soon, videos. 
 
 ###### DEMONSTRATION
 Prompt: _"Explain the difference between machine learning and deep learning in a paragraph suitable for a 12-year-old."_
+
 ---
 
 ##### [seq:040] Anthropic (Claude)
@@ -115,30 +117,10 @@ Claude has 'Constitutional AI'—a way of aligning its outputs with a set of pri
 
 ###### DEMONSTRATION
 Prompt: _"Summarize the pros and cons of using AI in education, and present it in the style of a high school debate."_
+
 ---
 
-##### [seq:050] Perplexity AI
-
-###### SCRIPT
-"Perplexity is not just a chatbot. It's a search engine. Think of it as Google-meets-ChatGPT. It answers questions in natural language but backs its answers with citations. Perfect for real-time facts, research, and comparisons.
-
-It also features 'Spaces' where users curate AI-driven research on a topic, and 'Copilot' for deeper multi-step inquiries."
-
-###### VISUAL
-\_Title: "Perplexity - AI-Powered Search Assistant"
-
-- Screenshot of Perplexity interface with citations
-- Callout box: Real-time Web Access + Source References
-
-###### NOTES
-- Link: https://www.perplexity.ai
-- Demonstrate using a controversial or current query like: "What are the pros and cons of remote work in 2025?"
-
-###### DEMONSTRATION
-Prompt: _"Compare the latest smartphone models: iPhone 16 vs Samsung Galaxy S25."_
----
-
-##### [seq:060] Google Gemini 2.0
+##### [seq:050] Google Gemini 2.0
 
 ###### SCRIPT
 "Gemini 2.0 is Google’s flagship model and successor to Bard. It's deeply integrated into Google Workspace, so it can help you write emails in Gmail, edit Docs, or create Sheets. Its real power lies in its multimodal ability: it can process and generate across text, image, and audio inputs in a single session.
@@ -158,7 +140,34 @@ Gemini is particularly good at visual understanding and context retention over l
 
 ###### DEMONSTRATION
 Upload an infographic and ask Gemini: _"What insights does this infographic provide?"_
+
 ---
+
+#### 1.2.2. Research & Information-Focused AI
+
+##### [seq:060] Perplexity AI
+
+###### SCRIPT
+"Perplexity is not just a chatbot. It's a search engine. Think of it as Google-meets-ChatGPT. It answers questions in natural language but backs its answers with citations. Perfect for real-time facts, research, and comparisons.
+
+It also features 'Spaces' where users curate AI-driven research on a topic, and 'Copilot' for deeper multi-step inquiries."
+
+###### VISUAL
+\_Title: "Perplexity - AI-Powered Search Assistant"
+
+- Screenshot of Perplexity interface with citations
+- Callout box: Real-time Web Access + Source References
+
+###### NOTES
+- Link: https://www.perplexity.ai
+- Demonstrate using a controversial or current query like: "What are the pros and cons of remote work in 2025?"
+
+###### DEMONSTRATION
+Prompt: _"Compare the latest smartphone models: iPhone 16 vs Samsung Galaxy S25."_
+
+---
+
+#### 1.2.3. Open-Source & Local Models
 
 ##### [seq:070] Mistral and Local Models via Ollama
 
@@ -187,11 +196,12 @@ Prompt: _"Summarize the causes of the French Revolution."_
 
 ---
 
-### 3. Core AI Capabilities, Principles, and Limitations
+### 1.3. Core AI Capabilities, Principles, and Limitations
 
-#### 3.1. Core Capabilities
+#### 1.3.1. Core Capabilities
 
 ##### [seq:080] Core Capabilities
+
 ###### SCRIPT
 "So, what can modern AI actually do? The capabilities of large language models go far beyond just chatting. At their core, they’re great at text generation: from writing poems and emails to full-blown academic essays or legal summaries.
 
@@ -218,7 +228,7 @@ _Title: "What AI Can Do (Today!)"_
 Prompt ChatGPT: _"Write a haiku about debugging JavaScript code while eating ramen."_
 ---
 
-#### 3.2. Principles of LLMs
+#### 1.3.2. Principles of LLMs
 
 ##### [seq:090] Tokens and Tokenization
 
@@ -297,8 +307,10 @@ This is why you can sometimes 'see' the model think—especially when it slows d
 - Mention beam search, top-k, nucleus sampling (advanced audiences).
 ---
 
-#### 3.3. Limitations of LLMs
+#### 1.3.3. Limitations of LLMs
+
 ##### [seq:130] Limitations of LLMs
+
 ###### SCRIPT
 Of course, it’s not all magic. LLMs have clear limitations—and they matter. Let’s go through the big ones.
 
@@ -326,7 +338,9 @@ Prompt examples:
 - _"If 30% of apples are rotten, how many are fresh out of 10?"_ → Logic error
 ---
 
-### 4. Recent AI Developments and Emerging Trends
+### 1.4. Recent AI Developments and Emerging Trends
+
+#### 1.4.1. Expanded AI Capabilities
 
 ##### [seq:140] Multimodal AI
 
@@ -342,9 +356,9 @@ Soon, we’ll see seamless handling of audio, video, and text together, making t
 **Title: "Multimodal AI: More Than Words"**
 
 - Bullet points:
-    - Understands images, audio, video
-    - Describes, analyzes, and interacts with multiple formats
-    - Enables real-world applications (medical, education, creative fields)
+  - Understands images, audio, video
+  - Describes, analyzes, and interacts with multiple formats
+  - Enables real-world applications (medical, education, creative fields)
 - Image: Screenshot or concept of image-to-text Q&A interaction
 
 ###### NOTES
@@ -374,9 +388,9 @@ This moves us closer to AI that can **solve high-level problems without constant
 
 - Diagram: Agents passing tasks to one another (Planner → Coder → Tester)
 - Highlights:
-    - Task decomposition
-    - Collaboration and coordination
-    - Limited human supervision
+  - Task decomposition
+  - Collaboration and coordination
+  - Limited human supervision
 
 ###### NOTES
 - Analogy: Like a company with different departments—each AI has its specialty.
@@ -389,6 +403,8 @@ Prompt: _"You are two agents: one researcher and one coder. Research recent Pyth
 Watch how the assistant self-organizes.
 
 ---
+
+#### 1.4.2. Efficiency and Accessibility Improvements
 
 ##### [seq:160] Small Language Models (SLMs)
 
@@ -405,9 +421,9 @@ This democratizes AI—more people, more devices, more possibilities."
 
 - Visual: Compare GPT-4 vs Phi-2 size and performance
 - Bullet Points:
-    - Faster, cheaper, lighter
-    - Great for edge devices
-    - Task-specific brilliance
+  - Faster, cheaper, lighter
+  - Great for edge devices
+  - Task-specific brilliance
 
 ###### NOTES
 
@@ -421,6 +437,8 @@ Prompt: _"Summarize the key features of your own architecture."_
 Discuss the fluency and speed compared to GPT-4.
 
 ---
+
+#### 1.4.3. Knowledge Enhancement Systems
 
 ##### [seq:170] Retrieval-Augmented Generation (RAG)
 
@@ -438,9 +456,9 @@ This improves accuracy, reduces hallucinations, and brings AI closer to acting l
 
 - Visual: Diagram (LLM + Search Engine → Response)
 - Key Points:
-    - Adds external memory
-    - Enables up-to-date and source-grounded answers
-    - Used in research, enterprise AI, customer support
+  - Adds external memory
+  - Enables up-to-date and source-grounded answers
+  - Used in research, enterprise AI, customer support
 
 ###### NOTES
 
@@ -470,9 +488,9 @@ It’s faster, more private, and essential for autonomous tech like self-driving
 
 - Diagram: AI on smartphones, cameras, cars
 - Highlights:
-    - Local processing = faster response
-    - No cloud dependency
-    - Privacy-preserving AI
+  - Local processing = faster response
+  - No cloud dependency
+  - Privacy-preserving AI
 
 ###### NOTES
 
@@ -483,7 +501,9 @@ It’s faster, more private, and essential for autonomous tech like self-driving
 
 ---
 
-### 5. Hands-On Activity: Spotting AI Imperfections
+### 1.5. Hands-On Activity: Spotting AI Imperfections
+
+#### 1.5.1. Activity Framework
 
 ##### [seq:190] Activity Overview
 
@@ -512,6 +532,8 @@ You’ll test prompts in different categories: **bias**, **hallucination**, **lo
 - Joke: "Think of yourself as an AI detective. But without the trench coat… unless you brought one."
 
 ---
+
+#### 1.5.2. AI Limitations Demonstrations
 
 ##### [seq:200] Demonstration 1: Bias & Stereotypes
 
@@ -652,6 +674,8 @@ Or:
 
 ---
 
+#### 1.5.3. Reflection
+
 ##### [seq:240] Activity Wrap-Up
 
 ###### SCRIPT
@@ -678,7 +702,9 @@ Your homework will involve digging deeper into these weaknesses and reflecting o
 - Tease next lecture: “Next time, we go from breaking things… to building with them!”
 
 ---
-### 6. Ethical and Responsible AI Usage
+### 1.6. Ethical and Responsible AI Usage
+
+#### 1.6.1. Foundations of AI Ethics
 
 ##### [seq:250] Why Ethics in AI Matters
 
@@ -740,6 +766,8 @@ And finally, **Privacy**—handling personal data with respect and security."
 
 ---
 
+#### 1.6.2. Implementing Ethical AI
+
 ##### [seq:270] Ethical Frameworks in Practice
 
 ###### SCRIPT
@@ -757,9 +785,9 @@ They encourage things like **bias audits**, **human-in-the-loop systems**, and *
 **Title: "Putting Ethics into Action"**
 
 - Bullet Points:
-    - AI risk classifications (low, medium, high)
-    - Human-in-the-loop workflows
-    - Regular audits and red-teaming
+  - AI risk classifications (low, medium, high)
+  - Human-in-the-loop workflows
+  - Regular audits and red-teaming
 
 ###### NOTES
 
@@ -794,6 +822,8 @@ There’s a growing field called **AI Alignment**—making sure AI systems do wh
 
 ---
 
+#### 1.6.3. Applied Ethics
+
 ##### [seq:290] Discussion Activity (Optional)
 
 ###### SCRIPT
@@ -812,9 +842,9 @@ Let’s break into small groups and brainstorm."
 
 - Scenario: Hiring AI system
 - Prompts:
-    - What data is acceptable?
-    - How to detect bias?
-    - Should the AI make the final decision?
+  - What data is acceptable?
+  - How to detect bias?
+  - Should the AI make the final decision?
 
 ###### NOTES
 
@@ -839,9 +869,9 @@ Let’s remember: technology should be **for people**, not just **about people**
 **Title: "Build AI You Can Trust"**
 
 - AI should:
-    - Help, not harm
-    - Empower, not replace
-    - Include, not exclude
+  - Help, not harm
+  - Empower, not replace
+  - Include, not exclude
 
 ###### NOTES
 
@@ -850,7 +880,9 @@ Let’s remember: technology should be **for people**, not just **about people**
 - Mention future fields they could explore: AI safety, explainability, AI law.
 
 ---
-### 7. Homework Assignment: Exploring AI Boundaries
+### 1.7. Homework Assignment: Exploring AI Boundaries
+
+#### 1.7.1. Assignment Overview
 
 ##### [seq:310] Homework Briefing
 
@@ -867,13 +899,13 @@ You’ll be given a set of prompts from different categories: bias, hallucinatio
 **Title: "Homework: Test the Boundaries of AI"**
 
 - Categories to explore:
-    - Bias and Stereotypes
-    - Hallucinations and False Information
-    - Reasoning and Logic Failures
-    - Prompt Injection and Security
+  - Bias and Stereotypes
+  - Hallucinations and False Information
+  - Reasoning and Logic Failures
+  - Prompt Injection and Security
 - Task:
-    - Run prompts across at least two AI systems
-    - Document and reflect on results
+  - Run prompts across at least two AI systems
+  - Document and reflect on results
 
 ###### NOTES
 
@@ -883,6 +915,8 @@ You’ll be given a set of prompts from different categories: bias, hallucinatio
 - Joke: "Basically, you’re now an AI red team—with homework instead of a salary."
 
 ---
+
+#### 1.7.2. Assignment Details
 
 ##### [seq:320] Prompt Categories and Examples
 
@@ -929,10 +963,10 @@ You’ll write a short reflection, 1–2 paragraphs per case, and submit it next
 
 - Brief report (2–3 pages total)
 - Include:
-    - Prompt
-    - Model used
-    - Result (summary or screenshot)
-    - Reflection: What failed and why it matters
+  - Prompt
+  - Model used
+  - Result (summary or screenshot)
+  - Reflection: What failed and why it matters
 
 ###### NOTES
 
@@ -942,6 +976,8 @@ You’ll write a short reflection, 1–2 paragraphs per case, and submit it next
 - Joke: “If your AI creates a unicorn-powered time machine, we want to hear about it.”
 
 ---
+
+#### 1.7.3. Learning Objectives
 
 ##### [seq:340] Homework Recap and Motivation
 
@@ -970,9 +1006,11 @@ In short: this homework makes you a safer, smarter AI user."
 - Tease: “Next lecture, we’ll flip the coin—from breaking models… to building with them.”
 
 ---
-### 8. Resources and Further Learning
+### 1.8. Resources and Further Learning
 
-##### [seq:340] Where to Learn More
+#### 1.8.1. Learning Resources
+
+##### [seq:350] Where to Learn More
 
 ###### SCRIPT
 
@@ -987,19 +1025,19 @@ That’s why I’ve compiled a list of reliable resources for you. These will he
 **Title: "Want More? Start Here."**
 
 - 🌐 **Websites & Platforms**
-    - [ai.google](https://ai.google/)
-    - [openai.com/blog](https://openai.com/blog)
-    - [anthropic.com](https://www.anthropic.com/)
-    - [huggingface.co](https://huggingface.co/)
-    - [ollama.com](https://ollama.com/)
+  - [ai.google](https://ai.google/)
+  - [openai.com/blog](https://openai.com/blog)
+  - [anthropic.com](https://www.anthropic.com/)
+  - [huggingface.co](https://huggingface.co/)
+  - [ollama.com](https://ollama.com/)
 - 📬 **Newsletters**
-    - _The Batch_ by DeepLearning.ai
-    - _Import AI_ by Jack Clark
-    - _Ben’s Bites_ – Daily digest of AI news
-    - _Latent Space_ – Deep dives and interviews
+  - _The Batch_ by DeepLearning.ai
+  - _Import AI_ by Jack Clark
+  - _Ben’s Bites_ – Daily digest of AI news
+  - _Latent Space_ – Deep dives and interviews
 - 📚 **Beginner-Friendly Readings**
-    - “You Look Like a Thing and I Love You” – Janelle Shane
-    - “Artificial Intelligence: A Guide for Thinking Humans” – Melanie Mitchell
+  - “You Look Like a Thing and I Love You” – Janelle Shane
+  - “Artificial Intelligence: A Guide for Thinking Humans” – Melanie Mitchell
 
 ###### NOTES
 
@@ -1010,7 +1048,9 @@ That’s why I’ve compiled a list of reliable resources for you. These will he
 
 ---
 
-##### [seq:350] Interactive Platforms to Try
+#### 1.8.2. Practical Tools
+
+##### [seq:360] Interactive Platforms to Try
 
 ###### SCRIPT
 "Next, let’s look at tools where you can **play and experiment**.
@@ -1021,18 +1061,18 @@ Want to try different models? Explore visual AI? Even build your own chatbot? Th
 **Title: "Tools to Explore After Class"**
 
 - 💬 **Model Sandboxes**
-    - [ChatGPT](https://chat.openai.com/)
-    - [Claude](https://claude.ai/)
-    - [Perplexity AI](https://www.perplexity.ai/)
-    - [Gemini](https://gemini.google.com/)
+  - [ChatGPT](https://chat.openai.com/)
+  - [Claude](https://claude.ai/)
+  - [Perplexity AI](https://www.perplexity.ai/)
+  - [Gemini](https://gemini.google.com/)
 - 🧪 **Prompt Labs & Testing**
-    - [PromptHero.com](https://prompthero.com/)
-    - [OpenRouter.ai](https://openrouter.ai/) – Multi-model playground
-    - [LMSYS Chatbot Arena](https://chat.lmsys.org/) – Side-by-side model comparison
+  - [PromptHero.com](https://prompthero.com/)
+  - [OpenRouter.ai](https://openrouter.ai/) – Multi-model playground
+  - [LMSYS Chatbot Arena](https://chat.lmsys.org/) – Side-by-side model comparison
 - 🧠 **Visual & Multimodal Playgrounds**
-    - [Playground AI](https://playgroundai.com/)
-    - [Leonardo.ai](https://leonardo.ai/)
-    - [RunwayML](https://runwayml.com/)
+  - [Playground AI](https://playgroundai.com/)
+  - [Leonardo.ai](https://leonardo.ai/)
+  - [RunwayML](https://runwayml.com/)
 
 ###### NOTES
 
@@ -1043,7 +1083,7 @@ Want to try different models? Explore visual AI? Even build your own chatbot? Th
 
 ---
 
-##### [seq:360] Prompting Guides & Communities
+##### [seq:370] Prompting Guides & Communities
 
 ###### SCRIPT
 "If you want to sharpen your prompting skills—and believe me, it's an art—you can learn a lot from communities that share prompts, hacks, and techniques."
@@ -1052,13 +1092,13 @@ Want to try different models? Explore visual AI? Even build your own chatbot? Th
 **Title: "Sharpen Your Prompting Game"**
 
 - 🔍 **Prompt Libraries**
-    - [flowgpt.com](https://flowgpt.com/)
-    - [promptbase.com](https://promptbase.com/)
-    - [aiprm.com](https://www.aiprm.com/)
+  - [flowgpt.com](https://flowgpt.com/)
+  - [promptbase.com](https://promptbase.com/)
+  - [aiprm.com](https://www.aiprm.com/)
 - 👥 **Communities & Forums**
-    - Reddit: r/ChatGPT, r/LocalLLaMA
-    - Discords: HuggingFace, AI Hub, OpenAI Devs
-    - Twitter/X: Follow @sama, @karpathy, @yoheinakajima
+  - Reddit: r/ChatGPT, r/LocalLLaMA
+  - Discords: HuggingFace, AI Hub, OpenAI Devs
+  - Twitter/X: Follow @sama, @karpathy, @yoheinakajima
 
 ###### NOTES
 - Encourage experimentation: “Borrow prompts. Remix them. Break them. That’s how you learn.”
@@ -1067,7 +1107,9 @@ Want to try different models? Explore visual AI? Even build your own chatbot? Th
 
 ---
 
-##### [seq:370] Closing Encouragement
+#### 1.8.3. Conclusion
+
+##### [seq:380] Closing Encouragement
 
 ###### SCRIPT
 "You don’t need to become a machine learning expert to make use of AI. What matters is curiosity—and the courage to explore.
