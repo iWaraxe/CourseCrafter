@@ -37,54 +37,68 @@ public class EnhancedUpdaterService {
             throws IOException, InterruptedException {
 
         List<ContentNode> updatedNodes = new ArrayList<>();
+        boolean gitChanges = false;
+
+        // Create a single branch for all changes
         String branchName = "content-update-" + System.currentTimeMillis();
-        boolean gitChanges = false;  // Track if any files were actually changed
+        gitService.createBranch(branchName);
 
-        for (AiProposalDto proposal : proposals) {
-            ContentNode node;
+        try {
+            // Process all proposals
+            for (AiProposalDto proposal : proposals) {
+                ContentNode node;
 
-            switch (proposal.action()) {
-                case "ADD":
-                    node = createNewNode(proposal);
-                    updatedNodes.add(node);
-
-                    // Sync the node to the Git repository
-                    gitChanges |= gitContentSyncService.syncNodeToFile(node);
-                    break;
-
-                case "UPDATE":
-                    node = updateExistingNode(proposal);
-                    if (node != null) {
+                switch (proposal.action()) {
+                    case "ADD":
+                        node = createNewNode(proposal);
                         updatedNodes.add(node);
 
                         // Sync the node to the Git repository
                         gitChanges |= gitContentSyncService.syncNodeToFile(node);
-                    }
-                    break;
+                        break;
 
-                case "DELETE":
-                    deleteNode(proposal.targetNodeId());
-                    // Note: For deletion, we'd need a different approach to update Git files
-                    break;
+                    case "UPDATE":
+                        node = updateExistingNode(proposal);
+                        if (node != null) {
+                            updatedNodes.add(node);
+
+                            // Sync the node to the Git repository
+                            gitChanges |= gitContentSyncService.syncNodeToFile(node);
+                        }
+                        break;
+
+                    case "DELETE":
+                        deleteNode(proposal.targetNodeId());
+                        break;
+                }
             }
+
+            // Make a single commit with all changes
+            if (!updatedNodes.isEmpty() && gitChanges) {
+                gitService.commitAllChanges(
+                        "Apply AI content updates: " + updatedNodes.size() + " changes");
+
+                // Push and create PR
+                gitService.pushBranch(branchName);
+                gitService.createPr(
+                        branchName,
+                        "Content Updates: " + updatedNodes.size() + " changes",
+                        generatePrDescription(proposals, updatedNodes));
+            } else if (!updatedNodes.isEmpty()) {
+                log.warn("Database nodes were updated but no Git files were changed. PR not created.");
+            }
+
+            return updatedNodes;
+        } catch (Exception e) {
+            log.error("Failed to apply proposals: {}", e.getMessage(), e);
+            // Try to clean up the branch if possible
+            try {
+                gitService.resetToMain();
+            } catch (Exception resetEx) {
+                log.error("Failed to reset to main: {}", resetEx.getMessage());
+            }
+            throw e;
         }
-
-        // Commit all changes together if any files were changed
-        if (!updatedNodes.isEmpty() && gitChanges) {
-            gitService.commitAndPush(
-                    branchName,
-                    "Apply AI content updates: " + updatedNodes.size() + " changes");
-
-            // Create PR
-            gitService.createPr(
-                    branchName,
-                    "Content Updates: " + updatedNodes.size() + " changes",
-                    generatePrDescription(proposals, updatedNodes));
-        } else if (!updatedNodes.isEmpty()) {
-            log.warn("Database nodes were updated but no Git files were changed. PR not created.");
-        }
-
-        return updatedNodes;
     }
 
     private ContentNode createNewNode(AiProposalDto proposal) throws IOException, InterruptedException {

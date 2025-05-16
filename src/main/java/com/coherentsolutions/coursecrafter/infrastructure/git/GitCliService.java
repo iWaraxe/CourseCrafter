@@ -31,6 +31,72 @@ public class GitCliService {
         this.enabled = enabled;
     }
 
+    /**
+     * Create a new branch from main
+     */
+    public void createBranch(String branch) throws IOException, InterruptedException {
+        if (!enabled) {
+            log.info("Git operations disabled, skipping branch creation");
+            return;
+        }
+
+        run("git", "-C", repoRoot, "checkout", "main");
+        run("git", "-C", repoRoot, "pull", "origin", "main");
+        run("git", "-C", repoRoot, "checkout", "-B", branch);
+    }
+
+    /**
+     * Commit all changes in the working directory
+     */
+    public void commitAllChanges(String message) throws IOException, InterruptedException {
+        if (!enabled) {
+            log.info("Git operations disabled, skipping commit");
+            return;
+        }
+
+        // Add all changes
+        run("git", "-C", repoRoot, "add", ".");
+
+        // Check if there are changes to commit
+        ProcessBuilder pb = new ProcessBuilder("git", "-C", repoRoot, "status", "--porcelain");
+        Process p = pb.start();
+        String changes = new String(p.getInputStream().readAllBytes()).trim();
+        p.waitFor();
+
+        if (changes.isEmpty()) {
+            log.info("No changes to commit, skipping commit operation");
+            return;
+        }
+
+        // Commit with the message
+        run("git", "-C", repoRoot, "commit", "-m", message);
+    }
+
+    /**
+     * Push the current branch to the remote
+     */
+    public void pushBranch(String branch) throws IOException, InterruptedException {
+        if (!enabled) {
+            log.info("Git operations disabled, skipping push");
+            return;
+        }
+
+        run("git", "-C", repoRoot, "push", "-f", remote, branch);
+    }
+
+    /**
+     * Reset to main branch and clean the working directory
+     */
+    public void resetToMain() throws IOException, InterruptedException {
+        if (!enabled) {
+            return;
+        }
+
+        run("git", "-C", repoRoot, "reset", "--hard", "HEAD");
+        run("git", "-C", repoRoot, "clean", "-fd");
+        run("git", "-C", repoRoot, "checkout", "main");
+    }
+
     public void commitAndPush(String branch, String message) throws IOException, InterruptedException {
         if (!enabled) {
             log.info("Git operations disabled, skipping commit and push");

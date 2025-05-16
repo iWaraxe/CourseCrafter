@@ -52,7 +52,7 @@ public class GitContentSyncService {
                 return false;
             }
 
-            // Read the current file content
+            // Read the current file content - ALWAYS read from disk to get the latest content
             String fileContent = Files.readString(targetFile);
 
             // Generate the new node content
