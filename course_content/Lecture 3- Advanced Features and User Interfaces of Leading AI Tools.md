@@ -1,10 +1,10 @@
-# BasicAICourse
+# Beginners AI. Mastering modern AI tools
 
-## Lecture 3. Advanced Features and User Interfaces of Leading AI Tools
+## Lecture 3: Advanced Features and User Interfaces of Leading AI Tools
 
-### 1. Introduction: Beyond Basics
+### 3.1. Introduction: Beyond Basics
 
-#### 1.1. Course Context and Overview
+#### 3.1.1. Course Context and Overview
 
 ##### [seq:010] Introduction
 
@@ -60,9 +60,9 @@ Visual: Sleek dashboard-style UI screenshot collage from ChatGPT, Claude, and Pe
 
 ---
 
-### 2. Advanced UI Capabilities of AI Tools
+### 3.2. Advanced UI Capabilities of AI Tools
 
-#### 2.1. OpenAI Ecosystem
+#### 3.2.1. OpenAI Ecosystem
 
 ##### [seq:020] ChatGPT (OpenAI)
 
@@ -110,7 +110,7 @@ Visual: Screenshots of Canvas, Project tabs, CustomGPT editor interface
 
 ---
 
-#### 2.2. Anthropic Platform
+#### 3.2.2. Anthropic Platform
 
 ##### [seq:030] Claude (Anthropic)
 
@@ -152,7 +152,7 @@ Visual: Screenshot of Claude interface with Thinking Mode active and Artefact re
 
 ---
 
-#### 2.3. Research-Oriented Systems
+#### 3.2.3. Research-Oriented Systems
 
 ##### [seq:040] Perplexity AI
 
@@ -191,7 +191,7 @@ Visual: Perplexity response screenshot with citation numbers, space example on a
 
 ---
 
-#### 2.4. Technical Foundations
+#### 3.2.4. Technical Foundations
 
 ##### [seq:050] Underlying Principles of Advanced LLM Usage
 
@@ -240,9 +240,9 @@ Visual: Infographic with each term illustrated
 
 ---
 
-### 3. Advanced Reasoning Capabilities
+### 3.3. Advanced Reasoning Capabilities
 
-#### 3.1. Reasoning Frameworks
+#### 3.3.1. Reasoning Frameworks
 
 ##### [seq:060] Demonstrations: Advanced Reasoning and Complex Tasks
 
@@ -277,7 +277,7 @@ Visual: Icons or sketches representing each domain (e.g., scale for ethics, puzz
 
 ---
 
-#### 3.2. Logic and Mathematics
+#### 3.3.2. Logic and Mathematics
 
 ##### [seq:070] Logic Puzzle
 
@@ -318,7 +318,7 @@ Visual: Icons or sketches representing each domain (e.g., scale for ethics, puzz
 
 ---
 
-#### 3.3. Ethical and Abstract Reasoning
+#### 3.3.3. Ethical and Abstract Reasoning
 
 ##### [seq:110] Ethical Dilemma
 
@@ -340,7 +340,7 @@ Visual: Icons or sketches representing each domain (e.g., scale for ethics, puzz
 
 ---
 
-#### 3.4. Scientific and Strategic Thinking
+#### 3.3.4. Scientific and Strategic Thinking
 
 ##### [seq:130] Scientific Reasoning
 
@@ -362,7 +362,7 @@ Visual: Icons or sketches representing each domain (e.g., scale for ethics, puzz
 
 ---
 
-#### 3.5. Social and Creative Intelligence
+#### 3.3.5. Social and Creative Intelligence
 
 ##### [seq:150] Social Reasoning
 
@@ -384,9 +384,9 @@ Visual: Icons or sketches representing each domain (e.g., scale for ethics, puzz
 
 ---
 
-### 4. Task-Specific AI Solutions
+### 3.4. Task-Specific AI Solutions
 
-#### 4.1. Personalized Assistants
+#### 3.4.1. Personalized Assistants
 
 ##### [seq:170] Advanced Task Automation and Personalized GPTs
 
@@ -422,7 +422,7 @@ Visual: Timeline-style graphic with GPT-generated events (e.g., 9am: Tech news, 
 
 ---
 
-#### 4.2. Productivity Applications
+#### 3.4.2. Productivity Applications
 
 ##### [seq:180] Demonstration A – Task Scheduler GPT
 
@@ -544,9 +544,9 @@ Visual: Grid of GPT tiles with logos or mock personas (e.g., "SpringBot," "Lingu
 
 ---
 
-### 5. Advanced Information Processing
+### 3.5. Advanced Information Processing
 
-#### 5.1. Knowledge Retrieval Systems
+#### 3.5.1. Knowledge Retrieval Systems
 
 ##### [seq:250] Advanced Information Retrieval and Data Analysis
 
@@ -584,7 +584,7 @@ Visual: Side-by-side layout of an uploaded PDF, chart, and summarized output
 
 ---
 
-#### 5.2. Research and Analysis Tools
+#### 3.5.2. Research and Analysis Tools
 
 ##### [seq:260] Demonstration A – Real-time Research Comparison
 
@@ -631,7 +631,7 @@ Visual: Side-by-side layout of an uploaded PDF, chart, and summarized output
 
 ---
 
-#### 5.3. Advanced Cognitive Techniques
+#### 3.5.3. Advanced Cognitive Techniques
 
 ##### [seq:290] Advanced Reasoning Techniques
 
@@ -727,9 +727,9 @@ Visual: Flowchart of a reasoning prompt broken into intermediate steps with anno
 
 ---
 
-### 6. Collaborative AI Systems
+### 3.6. Collaborative AI Systems
 
-#### 6.1. Multi-Agent Frameworks
+#### 3.6.1. Multi-Agent Frameworks
 
 ##### [seq:340] Multi-Agent and Autonomous AI Systems
 
@@ -773,9 +773,9 @@ Visual: Diagram of three AI agents passing tasks to each other with roles labele
 
 ---
 
-### 7. Hands-On Learning
+### 3.7. Hands-On Learning
 
-#### 7.1. Interactive Exercises
+#### 3.7.1. Interactive Exercises
 
 ##### [seq:350] Hands-On Activity: Advanced Prompt Exploration
 
@@ -842,7 +842,7 @@ Visual: Screenshots of the same prompt run in multiple models side-by-side
 
 ---
 
-#### 7.2. Continued Practice
+#### 3.7.2. Continued Practice
 
 ##### [seq:380] Homework: Prompt Library Exploration
 

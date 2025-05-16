@@ -1,10 +1,10 @@
-# BasicAICourse
+# Beginners AI. Mastering modern AI tools
 
 ## Lecture 4. Specialized AI tools and advanced workflows
 
-### 1. Introduction
+### 4.1. Introduction
 
-#### 1.1. Course Context and Objectives
+#### 4.1.1. Course Context and Objectives
 
 ##### [seq:010] Introduction: Recap and What's Next
 
@@ -36,14 +36,14 @@ Let’s get started.
 **Slide Title: "Lecture 4: Expanding AI Horizons"**
 
 - Left side: “Where We’ve Been”
-    - Lecture 1: *AI Assistants & Limitations*
-    - Lecture 2: *Text, Code, Visuals in Practice*
-    - Lecture 3: *Advanced UI, Reasoning & Personalization*
+  - Lecture 1: *AI Assistants & Limitations*
+  - Lecture 2: *Text, Code, Visuals in Practice*
+  - Lecture 3: *Advanced UI, Reasoning & Personalization*
 - Right side: “Where We’re Going Today”
-    - APIs & Prompt Precision
-    - Benchmarking & LLM Arena
-    - Specialized Tools (NotebookLM, Gamma, etc.)
-    - Staying Updated
+  - APIs & Prompt Precision
+  - Benchmarking & LLM Arena
+  - Specialized Tools (NotebookLM, Gamma, etc.)
+  - Staying Updated
 
 **Visuals**:
 - Icons or simple illustrations for each domain: gears for API, trophy for benchmarking, puzzle pieces for integration, radar screen for staying current.
@@ -54,10 +54,10 @@ Let’s get started.
 - **Fun Fact**: OpenAI’s Playground used to be text-only with no memory and limited formatting. Today, you can tweak temperature, set roleplay scenarios, and simulate product UIs in a browser.
 - **Joke**: “In Lecture 1, AI hallucinated. In Lecture 2, it coded. In Lecture 3, it reasoned. Today? It becomes your lab assistant, graphic designer, video editor, and research analyst. All before lunch.”
 - **Mention**:
-    - [https://platform.openai.com/playground](https://platform.openai.com/playground)
-    - [https://console.anthropic.com](https://console.anthropic.com)
-    - [https://www.llmarena.com](https://www.llmarena.com)
-    - [https://notebooklm.google](https://notebooklm.google)
+  - [https://platform.openai.com/playground](https://platform.openai.com/playground)
+  - [https://console.anthropic.com](https://console.anthropic.com)
+  - [https://www.llmarena.com](https://www.llmarena.com)
+  - [https://notebooklm.google](https://notebooklm.google)
 
 ###### DEMONSTRATION
 
@@ -75,9 +75,9 @@ Write an essay on the Titanic that is *exactly* 300 words. Do not present the an
 **Discussion Prompt**:
 > "This might seem pedantic—but in technical writing, compliance, and academia, word count precision *matters*. How do you think AI performs when we force it to follow rigid constraints?"
 
-### 2. API Integration and Advanced Prompting
+### 4.2. API Integration and Advanced Prompting
 
-#### 2.1. API Fundamentals
+#### 4.2.1. API Fundamentals
 
 ##### [seq:020] Understanding APIs and LLM Integration
 
@@ -123,9 +123,9 @@ With just a few lines of code or even a no-code tool, you can:
 - **Trivia**: The first version of GPT-3 API launched in 2020 and had no memory, no chat history—just one-shot text completion.
 - **Joke**: “Setting temperature to 1 is like giving your AI a Red Bull and telling it to be creative. Setting it to 0? You’ve got Spock.”
 - Mention:
-    - [OpenAI Playground](https://platform.openai.com/playground)
-    - [Anthropic Console](https://console.anthropic.com)
-    - [Google Vertex AI](https://cloud.google.com/vertex-ai)
+  - [OpenAI Playground](https://platform.openai.com/playground)
+  - [Anthropic Console](https://console.anthropic.com)
+  - [Google Vertex AI](https://cloud.google.com/vertex-ai)
 - **Optional Visual Aid**: Draw or animate the “prompt in → response out” pipeline with labeled boxes.
 
 ---
@@ -174,7 +174,7 @@ Describe the formation of a black hole.
 
 ---
 
-#### 2.2. Precision Prompting Techniques
+#### 4.2.2. Precision Prompting Techniques
 
 ##### [seq:050] Advanced Prompt Crafting Techniques
 
@@ -216,7 +216,7 @@ Let’s dive into some prompt magic that would make even Hogwarts jealous.
 
 ---
 
-#### 3.1. Demonstrations
+#### 4.3.1. Demonstrations
 
 ##### [seq:060] Demo A – 300-Word Precision Essay
 
@@ -282,9 +282,9 @@ Use segmentation. Because this essay is quite long, consider breaking it into te
 
 ---
 
-### 3. Model Benchmarking and Comparison
+### 4.3. Model Benchmarking and Comparison
 
-#### 3.1. Evaluation Frameworks
+#### 4.3.1. Evaluation Frameworks
 
 ##### [seq:090] AI Arena & Benchmarking
 
@@ -321,13 +321,13 @@ Here's what we're going to explore:
 - **Tip**: Use metaphors like sports leagues, where GPT-4 is a chess champion, Claude is the philosopher, Gemini is the multimedia artist, and Mistral is the indie underdog.
 - **Joke**: “The only thing missing here is live commentary and dramatic theme music—but don’t tempt me.”
 - Mention:
-    - [https://llmarena.com](https://llmarena.com) for side-by-side model evaluations
-    - Academic benchmark sets: MMLU, BigBench, ARC
-    - Leaderboards (like LMSYS or HuggingFace) for up-to-date results
+  - [https://llmarena.com](https://llmarena.com) for side-by-side model evaluations
+  - Academic benchmark sets: MMLU, BigBench, ARC
+  - Leaderboards (like LMSYS or HuggingFace) for up-to-date results
 
 ---
 
-#### 3.2. Comparative Testing
+#### 4.3.2. Comparative Testing
 
 ##### [seq:100] Demo A – Real-Time Arena Test (Creative Output)
 
@@ -402,9 +402,9 @@ Rewrite the nursery rhyme 'Jack and Jill' as a crime noir opening paragraph.
 
 ---
 
-### 4. AI-Enhanced Image Processing
+### 4.4. AI-Enhanced Image Processing
 
-#### 4.1. Programmatic Image Editing
+#### 4.4.1. Programmatic Image Editing
 
 ##### [seq:140] Advanced AI-Enhanced Image Editing
 
@@ -443,12 +443,12 @@ In this section, we’ll:
 - **Joke**: “It’s like having a moody digital intern with Photoshop skills and a Python habit.”
 - **Tip**: Let students know they can use free tools like [Google Colab](https://colab.research.google.com/) or [Replit](https://replit.com/) to run Python + Pillow code even without setup.
 - Mention:
-    - `pip install pillow` for local setup
-    - Link to Pillow’s official docs: [https://pillow.readthedocs.io](https://pillow.readthedocs.io)
+  - `pip install pillow` for local setup
+  - Link to Pillow’s official docs: [https://pillow.readthedocs.io](https://pillow.readthedocs.io)
 
 ---
 
-#### 5.4. Demonstrations
+#### 4.5.4. Demonstrations
 
 ##### [seq:150] Demo A – Classic Image Edits (Greyscale + Vignette)
 
@@ -528,9 +528,9 @@ Split the RGB bands of the image and merge them in a new order (e.g., BGR). Add 
 
 ---
 
-### 5. Specialized AI Applications
+### 4.5. Specialized AI Applications
 
-#### 5.1. Domain-Specific Tools
+#### 4.5.1. Domain-Specific Tools
 
 ##### [seq:190] Specialized AI Tools
 
@@ -571,11 +571,11 @@ Let’s walk through each one and see how they can amplify your thinking.
 - **Tip**: Emphasize these are *low-barrier tools*. Most use drag & drop, uploads, or text boxes—*no code required*.
 - **Joke**: “If ChatGPT is your generalist AI, these are like the weirdly talented friends who only do one thing—*but do it brilliantly*.”
 - Mention:
-    - [https://notebooklm.google](https://notebooklm.google)
-    - [https://gamma.app](https://gamma.app)
-    - [https://napkin.one](https://napkin.one)
-    - [https://readpartner.com](https://readpartner.com)
-    - [https://heygen.com](https://heygen.com)
+  - [https://notebooklm.google](https://notebooklm.google)
+  - [https://gamma.app](https://gamma.app)
+  - [https://napkin.one](https://napkin.one)
+  - [https://readpartner.com](https://readpartner.com)
+  - [https://heygen.com](https://heygen.com)
 
 ---
 
@@ -632,9 +632,9 @@ Create a presentation about the benefits of AI in education.
 
 - Create a simple idea cluster: "Launching a podcast"
 - Input notes like:
-    - “Name ideas: MicDrop, EarFuel, The Morning Loop”
-    - “Need cover art, distribution, theme music”
-    - “Weekly vs monthly schedule?”
+  - “Name ideas: MicDrop, EarFuel, The Morning Loop”
+  - “Need cover art, distribution, theme music”
+  - “Weekly vs monthly schedule?”
 
 **Instructions**:
 
@@ -691,7 +691,7 @@ Summarize this article in 200 words and translate it into Spanish.
 
 ---
 
-#### 5.2. Integrated Workflows
+#### 4.5.2. Integrated Workflows
 
 ##### [seq:250] Combining Tools for Extraordinary Results
 
@@ -742,7 +742,7 @@ C --> D[HeyGen: Video Presentation]
 - **Analogy**: This is like chaining LEGO bricks—each tool has a *shape* that fits perfectly into the next if you know how to use it.
 - **Joke**: “Suddenly your Sunday project turns into a boardroom-ready report—with animations.”
 - **Mention**:
-    - Medium article inspiration: [The 4-Step Framework to Create Research Reports in Minutes with AI](https://medium.com/publishous/the-4-step-framework-to-create-powerful-research-reports-in-minutes-with-ai-516913559fc8)
+  - Medium article inspiration: [The 4-Step Framework to Create Research Reports in Minutes with AI](https://medium.com/publishous/the-4-step-framework-to-create-powerful-research-reports-in-minutes-with-ai-516913559fc8)
 
 ---
 
@@ -811,9 +811,9 @@ This is the Electric Vehicle Industry Outlook Report. Over the next decade, we e
 
 ---
 
-### 6. Advanced Research Techniques
+### 4.6. Advanced Research Techniques
 
-#### 6.1. Longform Content Creation
+#### 4.6.1. Longform Content Creation
 
 ##### [seq:280] Deep Research Techniques on a Budget
 
@@ -851,9 +851,9 @@ This isn’t just about speed. It’s about accuracy, structure, and credibility
 - **Tip**: This is where word count prompts (`BaiL4Pr2`) shine — students see prompt engineering turn into production workflows.
 - **Joke**: “It’s like writing a thesis with caffeine, but the caffeine is GPT-4.”
 - Mention:
-    - [https://wordcounter.net](https://wordcounter.net)
-    - Claude for document structure & markdown formatting
-    - Perplexity for up-to-date, cited facts
+  - [https://wordcounter.net](https://wordcounter.net)
+  - Claude for document structure & markdown formatting
+  - Perplexity for up-to-date, cited facts
 
 ---
 
@@ -878,10 +878,10 @@ Follow these formatting guidelines:
 **Instructions**:
 
 - Show how the model starts building:
-    - Title
-    - Abstract
-    - Intro
-    - First body sections
+  - Title
+  - Abstract
+  - Intro
+  - First body sections
 - Emphasize section-by-section editing, manual word tracking, and source referencing
 - You don’t need to finish the whole essay live — just show the **scaffolding and word budgeting in action**
 
@@ -907,9 +907,9 @@ Follow these formatting guidelines:
 
 ---
 
-### 7. Multi-Agent Systems
+### 4.7. Multi-Agent Systems
 
-#### 7.1. Collaborative AI Frameworks
+#### 4.7.1. Collaborative AI Frameworks
 
 ##### [seq:320] Multi-Agent and Autonomous AI Systems
 
@@ -948,9 +948,9 @@ So far, we’ve been working with one model at a time. But imagine this:
 - **Tip**: Emphasize this is like giving LLMs an internal Slack workspace + Jira board
 - **Joke**: “So now you don’t just have an AI assistant… you’ve got an AI *department*.”
 - Mention:
-    - [https://github.com/microsoft/autogen](https://github.com/microsoft/autogen)
-    - [https://crewai.io](https://crewai.io)
-    - [https://github.com/OpenDevin/OpenDevin](https://github.com/OpenDevin/OpenDevin)
+  - [https://github.com/microsoft/autogen](https://github.com/microsoft/autogen)
+  - [https://crewai.io](https://crewai.io)
+  - [https://github.com/OpenDevin/OpenDevin](https://github.com/OpenDevin/OpenDevin)
 - Bonus: If students are programmers, mention LangGraph or LangChain agent frameworks
 
 ---
@@ -1008,18 +1008,18 @@ Reviewer: Check tone and consistency.
 
 - Goal: “Create a basic to-do app with Flask.”
 - OpenDevin uses shell + editor + memory to:
-    - Scaffold project
-    - Write files
-    - Test and debug
-    - Output full repo
+  - Scaffold project
+  - Write files
+  - Test and debug
+  - Output full repo
 
 **If live demo not possible**, walk through screenshots or video clips.
 
 ---
 
-### 8. Future Growth and Resources
+### 4.8. Future Growth and Resources
 
-#### 8.1. Staying Current
+#### 4.8.1. Staying Current
 
 ##### [seq:360] Staying Ahead in AI: Influencers & Resources
 
@@ -1065,11 +1065,11 @@ Ready to future-proof your AI journey?"
 - **Tip**: Encourage students to pick *one or two* high-signal sources and stick with them. Better to be consistent than overwhelmed.
 - **Joke**: “Staying current in AI is like drinking from a firehose. These folks hand you a straw.”
 - Mention:
-    - [https://www.bensbites.co](https://www.bensbites.co)
-    - [https://www.tldr.tech](https://www.tldr.tech)
-    - [https://www.theresanaiforthat.com](https://www.theresanaiforthat.com)
-    - [https://llmarena.com](https://llmarena.com)
-    - [https://futurepedia.io](https://futurepedia.io)
+  - [https://www.bensbites.co](https://www.bensbites.co)
+  - [https://www.tldr.tech](https://www.tldr.tech)
+  - [https://www.theresanaiforthat.com](https://www.theresanaiforthat.com)
+  - [https://llmarena.com](https://llmarena.com)
+  - [https://futurepedia.io](https://futurepedia.io)
 
 ###### DEMONSTRATION
 
@@ -1077,9 +1077,9 @@ Demo – “How I Curate My AI Feed”
 
 - Show your own AI folder in bookmarks, RSS, or Notion
 - Walk through how you:
-    - Read newsletters in 5 minutes
-    - Save 1–2 prompts or tools weekly
-    - Try something small each week
+  - Read newsletters in 5 minutes
+  - Save 1–2 prompts or tools weekly
+  - Try something small each week
 - Share how you track updates to ChatGPT, Claude, or Gemini
 
 **Discussion Prompt**:
@@ -1087,7 +1087,7 @@ Demo – “How I Curate My AI Feed”
 
 ---
 
-#### 8.2. Hands-On Application
+#### 4.8.2. Hands-On Application
 
 ##### [seq:370] Hands-On Activity: AI Tool Integration Workshop
 
@@ -1184,7 +1184,7 @@ The goal is simple: show me that you’re not just using AI… you’re thinking
 
 ---
 
-#### 8.3. Course Conclusion
+#### 4.8.3. Course Conclusion
 
 ##### [seq:390] Closing: The AI Journey Continues
 

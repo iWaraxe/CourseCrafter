@@ -9,30 +9,48 @@ import java.util.regex.Pattern;
 public final class MarkdownPatterns {
 
     // Document structure patterns
-    public static final Pattern COURSE_PATTERN = Pattern.compile("^# ([^\\n]+)", Pattern.MULTILINE);
-    public static final Pattern LECTURE_PATTERN = Pattern.compile("^## ([^\\n]+)", Pattern.MULTILINE);
-    public static final Pattern SECTION_PATTERN = Pattern.compile("^### ([^\\n]+)", Pattern.MULTILINE);
-    public static final Pattern TOPIC_PATTERN = Pattern.compile("^#### ([^\\n]+)", Pattern.MULTILINE);
+    // These patterns are primarily for identifying the titles of these elements.
+    // The parser logic is responsible for slicing the content blocks.
+    public static final Pattern COURSE_PATTERN = Pattern.compile("^#\\s+([^\\n]+?)\\s*$", Pattern.MULTILINE);
+    public static final Pattern LECTURE_PATTERN = Pattern.compile("^##\\s+([^\\n]+?)\\s*$", Pattern.MULTILINE);
+    public static final Pattern SECTION_PATTERN = Pattern.compile("^###\\s+([^\\n]+?)\\s*$", Pattern.MULTILINE);
+    public static final Pattern TOPIC_PATTERN = Pattern.compile("^####\\s+([^\\n]+?)\\s*$", Pattern.MULTILINE);
+
     /**
-     * This pattern is specifically designed to capture slide headers and their content
-     * Group 1: Sequence number
-     * Group 2: Slide title
-     * Group 3: Complete slide content (should include all components)
+     * SLIDE_PATTERN:
+     * Group 1: Sequence number (e.g., "010")
+     * Group 2: Slide title (everything on the H5 line after [seq:xxx])
+     * Group 3: Slide body content (everything AFTER the H5 line, until a terminator)
+     * Terminators: Next H5, H4, H3, H2, H1, '---' separator, or end of current parsing block.
      */
     public static final Pattern SLIDE_PATTERN = Pattern.compile(
-            "##### \\[seq:(\\d+)\\] ([^\\n]+)\\n((?:[\\s\\S](?!##### \\[seq:[0-9]+\\]))*)(?=##### |$)",
-            Pattern.MULTILINE
-    );
-    /**
-     * This pattern matches individual slide components with their content
-     * It's designed to capture each component type and its content separately
-     */
-    public static final Pattern COMPONENT_PATTERN = Pattern.compile(
-            "###### (SCRIPT|VISUAL|NOTES|DEMONSTRATION)\\s*\\n([\\s\\S]*?)(?=\\s*###### |$)",
-            Pattern.DOTALL
+            // Start of line, H5, space, [seq:digits], space, title
+            "^#####\\s+\\[seq:(\\d+)\\]\\s+([^\\n]+?)\\s*$" + // Group 1 (seq), Group 2 (title). Ensures title is the rest of the H5 line.
+                    // Content block (Group 3): Optional, starts on a new line.
+                    "(?:\\r?\\n(.*?))?" + // Non-capturing group for the newline and content. Group 3 is (.*?).
+                    // Positive lookahead for terminators.
+                    "(?=\\Z|^#####\\s+\\[seq:\\d+\\]|^\\s*---\\s*$|^#{1,4}\\s)",
+            Pattern.MULTILINE | Pattern.DOTALL
     );
 
-    // Table structure pattern
+    /**
+     * COMPONENT_PATTERN:
+     * Group 1: Component type (SCRIPT, VISUAL, NOTES, DEMONSTRATION)
+     * Group 2: Component content (everything AFTER the H6 line, until next H6 or end of slide body)
+     * This pattern operates on the slide body content (Group 3 from SLIDE_PATTERN).
+     */
+    public static final Pattern COMPONENT_PATTERN = Pattern.compile(
+            // Start of line (within slide body), H6, space, type
+            "^######\\s+(SCRIPT|VISUAL|NOTES|DEMONSTRATION)\\s*$" + // Group 1 (type). Ensures type is the only thing on H6 line.
+                    // Content block (Group 2): Optional, starts on a new line.
+                    "(?:\\r?\\n(.*?))?" + // Non-capturing group for newline and content. Group 2 is (.*?).
+                    // Positive lookahead for terminators.
+                    "(?=\\Z|^######\\s+(?:SCRIPT|VISUAL|NOTES|DEMONSTRATION))",
+            Pattern.MULTILINE | Pattern.DOTALL
+    );
+
+    // Table structure pattern - remains basic as it's not the focus of current issues.
+    // Proper Markdown table parsing is complex and usually requires more than a single regex.
     public static final Pattern TABLE_PATTERN = Pattern.compile("\\|(.+?)\\|", Pattern.DOTALL);
 
     // Private constructor to prevent instantiation
