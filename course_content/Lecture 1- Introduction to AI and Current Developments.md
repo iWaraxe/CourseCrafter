@@ -1,4 +1,5 @@
-# Beginners AI. Mastering modern AI tools
+# BasicAICourse
+
 ## Lecture 1. Introduction to AI and Current Developments
 
 ### 1. Introduction: Understanding AI
@@ -72,6 +73,7 @@ Prompt ChatGPT with:
 ---
 
 ### 2. Major AI Systems Overview
+
 ##### [seq:030] OpenAI (ChatGPT)
 
 ###### SCRIPT
