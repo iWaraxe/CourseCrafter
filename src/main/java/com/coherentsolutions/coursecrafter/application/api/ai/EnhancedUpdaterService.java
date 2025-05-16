@@ -1,5 +1,7 @@
 package com.coherentsolutions.coursecrafter.application.api.ai;
 
+import com.coherentsolutions.coursecrafter.domain.proposal.model.PendingProposal;
+import com.coherentsolutions.coursecrafter.domain.proposal.repository.PendingProposalRepository;
 import com.coherentsolutions.coursecrafter.infrastructure.git.GitContentSyncService;
 import com.coherentsolutions.coursecrafter.presentation.dto.ai.AiProposalDto;
 import com.coherentsolutions.coursecrafter.domain.content.model.ContentNode;
@@ -7,6 +9,7 @@ import com.coherentsolutions.coursecrafter.domain.content.repository.ContentNode
 import com.coherentsolutions.coursecrafter.domain.version.repository.ContentVersionRepository;
 import com.coherentsolutions.coursecrafter.domain.content.service.ContentNodeService;
 import com.coherentsolutions.coursecrafter.infrastructure.git.GitCliService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -28,6 +31,8 @@ public class EnhancedUpdaterService {
     private final ContentNodeService nodeService;
     private final GitCliService gitService;
     private final GitContentSyncService gitContentSyncService;
+    private final PendingProposalRepository pendingProposalRepository;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     /**
      * Apply a list of AI-generated proposals to the content structure
@@ -53,8 +58,18 @@ public class EnhancedUpdaterService {
                         node = createNewNode(proposal);
                         updatedNodes.add(node);
 
-                        // Sync the node to the Git repository
-                        gitChanges |= gitContentSyncService.syncNodeToFile(node);
+                        // Before calling syncNodeToFile
+                        log.debug("About to sync node to file: {} (type: {}, parent: {})",
+                                node.getTitle(),
+                                node.getNodeType(),
+                                node.getParent() != null ? node.getParent().getTitle() : "none");
+
+
+                        // Sync the node to the Git repository - Pass the branch name here
+                        gitChanges |= gitContentSyncService.syncNodeToFile(node, branchName);
+
+                        // After calling syncNodeToFile
+                        log.debug("Sync result: {}", gitChanges);
                         break;
 
                     case "UPDATE":
@@ -62,8 +77,8 @@ public class EnhancedUpdaterService {
                         if (node != null) {
                             updatedNodes.add(node);
 
-                            // Sync the node to the Git repository
-                            gitChanges |= gitContentSyncService.syncNodeToFile(node);
+                            // Sync the node to the Git repository - Pass the branch name here
+                            gitChanges |= gitContentSyncService.syncNodeToFile(node, branchName);
                         }
                         break;
 
@@ -99,6 +114,92 @@ public class EnhancedUpdaterService {
             }
             throw e;
         }
+    }
+
+    /**
+     * Apply a list of AI-generated proposals to Git without updating the database
+     */
+    @Transactional
+    public String createProposalPR(List<AiProposalDto> proposals) throws IOException, InterruptedException {
+        boolean gitChanges = false;
+
+        // Create a single branch for all changes
+        String branchName = "content-update-" + System.currentTimeMillis();
+        gitService.createBranch(branchName);
+
+        try {
+            // Process all proposals - ONLY updating Git files, not the database
+            for (AiProposalDto proposal : proposals) {
+                // Create a transient node object (not saved to database)
+                ContentNode transientNode = createTransientNodeFromProposal(proposal);
+
+                // Sync the node to the Git repository without database changes
+                gitChanges |= gitContentSyncService.syncNodeToFileOnly(transientNode, branchName);
+            }
+
+            // Store the proposals in our pending table
+            PendingProposal pendingProposal = PendingProposal.builder()
+                    .branchName(branchName)
+                    .proposalJson(objectMapper.writeValueAsString(proposals))
+                    .status("PENDING")
+                    .createdAt(LocalDateTime.now())
+                    .updatedAt(LocalDateTime.now())
+                    .build();
+
+            pendingProposalRepository.save(pendingProposal);
+
+            // Make a single commit with all changes
+            if (gitChanges) {
+                gitService.commitAllChanges(
+                        "Proposed AI content updates: " + proposals.size() + " changes");
+
+                // Push and create PR
+                gitService.pushBranch(branchName);
+                String prUrl = gitService.createPr(
+                        branchName,
+                        "Proposed Content Updates: " + proposals.size() + " changes",
+                        generatePrDescription(proposals, new ArrayList<>()));
+
+                // Update the pending proposal with the PR URL
+                pendingProposal.setPrUrl(prUrl);
+                pendingProposalRepository.save(pendingProposal);
+
+                return prUrl;
+            }
+
+            return "No changes to commit";
+        } catch (Exception e) {
+            log.error("Failed to apply proposals: {}", e.getMessage(), e);
+            // Try to clean up the branch if possible
+            try {
+                gitService.resetToMain();
+            } catch (Exception resetEx) {
+                log.error("Failed to reset to main: {}", resetEx.getMessage());
+            }
+            throw e;
+        }
+    }
+
+    /**
+     * Create a transient ContentNode object from a proposal (not saved to database)
+     */
+    private ContentNode createTransientNodeFromProposal(AiProposalDto proposal) {
+        ContentNode parentNode = null;
+        if (proposal.parentNodeId() != null && proposal.parentNodeId() > 0) {
+            // Create a stub parent with just the ID
+            parentNode = new ContentNode();
+            parentNode.setId(proposal.parentNodeId());
+        }
+
+        return ContentNode.builder()
+                .parent(parentNode)
+                .nodeType(ContentNode.NodeType.valueOf(proposal.nodeType()))
+                .title(proposal.title())
+                .nodeNumber(proposal.nodeNumber())
+                .displayOrder(proposal.displayOrder() != null ? proposal.displayOrder() : 100)
+                .createdAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
+                .build();
     }
 
     private ContentNode createNewNode(AiProposalDto proposal) throws IOException, InterruptedException {

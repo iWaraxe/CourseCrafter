@@ -163,11 +163,12 @@ public class GitCliService {
      * @param branch feature branch that was already pushed
      * @param title  PR title
      * @param body   PR body/description
+     * @return String PR URL or error message
      */
-    public void createPr(String branch, String title, String body) throws IOException, InterruptedException {
+    public String createPr(String branch, String title, String body) throws IOException, InterruptedException {
         if (!enabled) {
             log.info("Git operations disabled, skipping PR creation");
-            return;
+            return "Git operations disabled";
         }
 
         try {
@@ -177,14 +178,14 @@ public class GitCliService {
             int ghResult = ghCheck.waitFor();
             if (ghResult != 0) {
                 log.error("GitHub CLI not available. Please ensure gh is installed.");
-                return;
+                return "GitHub CLI not available";
             }
 
             // Write the PR body to a temporary file to avoid shell interpretation issues
             Path tempFile = Files.createTempFile("pr-description", ".md");
             Files.writeString(tempFile, body);
 
-            // Create PR using the file for the body
+            // Create PR using the file for the body and capture output to get the PR URL
             String cmd = String.format(
                     "cd %s && /opt/homebrew/bin/gh pr create --title \"%s\" --body-file \"%s\" --base %s --head %s",
                     repoRoot,
@@ -194,13 +195,40 @@ public class GitCliService {
                     branch
             );
 
-            run("sh", "-c", cmd);
+            // Capture the output of the command to get the PR URL
+            ProcessBuilder prCreateProcess = new ProcessBuilder("sh", "-c", cmd);
+            prCreateProcess.redirectErrorStream(true);
+            Process process = prCreateProcess.start();
+
+            // Read the output which should contain the PR URL
+            String output = new String(process.getInputStream().readAllBytes()).trim();
+            process.waitFor();
 
             // Delete the temporary file
             Files.deleteIfExists(tempFile);
+
+            // Check if the PR creation was successful
+            if (process.exitValue() == 0 && output.contains("http")) {
+                // Extract the PR URL from the output - it's usually the last line
+                String[] lines = output.split("\\n");
+                for (String line : lines) {
+                    if (line.startsWith("http") || line.contains("github.com")) {
+                        return line.trim();
+                    }
+                }
+
+                // If we can't find a URL in the output, construct one based on the repo
+                // This is a fallback that may not always work
+                String repoName = repoRoot.substring(repoRoot.lastIndexOf('/') + 1);
+                String orgName = repoRoot.substring(0, repoRoot.lastIndexOf('/')).substring(repoRoot.substring(0, repoRoot.lastIndexOf('/')).lastIndexOf('/') + 1);
+                return String.format("https://github.com/%s/%s/pull/new/%s", orgName, repoName, branch);
+            } else {
+                log.error("Failed to create PR: {}", output);
+                return "PR creation failed: " + output;
+            }
         } catch (Exception e) {
             log.error("Failed to create PR: {}", e.getMessage());
-            // Log but don't fail the entire operation
+            return "Error creating PR: " + e.getMessage();
         }
     }
 
