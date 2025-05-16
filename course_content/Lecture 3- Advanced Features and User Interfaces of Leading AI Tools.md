@@ -1,6 +1,6 @@
 # Beginners AI. Mastering modern AI tools
 
-## Lecture 3: Advanced Features and User Interfaces of Leading AI Tools
+## Lecture 3. Advanced Features and User Interfaces of Leading AI Tools
 
 ### 3.1. Introduction: Beyond Basics
 
