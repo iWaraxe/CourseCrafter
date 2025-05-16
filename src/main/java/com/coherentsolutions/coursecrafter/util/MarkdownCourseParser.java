@@ -94,6 +94,17 @@ public class MarkdownCourseParser {
         while (lectureMatcher.find()) {
             String lectureTitle = lectureMatcher.group(1).trim();
 
+            // Extract lecture number from title (e.g., "Lecture 1.")
+            int lectureNumber = 1; // Default
+            Pattern pattern = Pattern.compile("Lecture (\\d+)\\.");
+            Matcher matcher = pattern.matcher(lectureTitle);
+            if (matcher.find()) {
+                lectureNumber = Integer.parseInt(matcher.group(1));
+            }
+
+            // Set display order based on lecture number (multiply by 10 for spacing)
+            int displayOrder = lectureNumber * 10;
+
             // Find the start position of this lecture
             int lectureStart = lectureMatcher.start();
 
@@ -118,8 +129,8 @@ public class MarkdownCourseParser {
                     .nodeType(ContentNode.NodeType.LECTURE)
                     .parent(courseNode)
                     .title(lectureTitle)
-                    .displayOrder(lectureOrder)
-                    .path(courseNode.getPath() + "/Lecture/" + lectureOrder)
+                    .displayOrder(displayOrder) // Use lecture number-based ordering
+                    .path(courseNode.getPath() + "/Lecture/" + lectureNumber) // Also update path
                     .createdAt(LocalDateTime.now())
                     .updatedAt(LocalDateTime.now())
                     .build();

@@ -73,6 +73,7 @@ Prompt ChatGPT with:
 ---
 
 ### 2. Major AI Systems Overview
+
 ##### [seq:030] OpenAI (ChatGPT)
 
 ###### SCRIPT
