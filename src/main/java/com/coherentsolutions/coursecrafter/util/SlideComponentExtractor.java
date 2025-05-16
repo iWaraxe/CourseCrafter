@@ -155,20 +155,60 @@ public class SlideComponentExtractor implements CommandLineRunner {
                     .map(ContentVersion::getContent)
                     .orElse("");
 
+            log.debug("Processing slide content for '{}' (length: {})",
+                    slide.getTitle(), slideContent.length());
+
             log.debug("Content being searched for components:\n{}", slideContent);
             log.debug("Using regex pattern: {}", MarkdownPatterns.COMPONENT_PATTERN.pattern());
 
+            // Preprocess the content to ensure component headers are properly formatted
+            String processedContent = slideContent.replaceAll("\n[ \t]*######[ \t]*", "\n###### ");
+
             // Test the pattern explicitly
-            Matcher testMatcher = MarkdownPatterns.COMPONENT_PATTERN.matcher(slideContent);
-            int matchCount = 0;
-            while (testMatcher.find()) {
-                matchCount++;
-                log.debug("MATCH #{}: Type={}, Content starts with: {}",
-                        matchCount,
-                        testMatcher.group(1),
-                        testMatcher.group(3).substring(0, Math.min(20, testMatcher.group(3).length())) + "...");
+            // Add a newline at the beginning to help with regex matching
+            Matcher componentMatcher = MarkdownPatterns.COMPONENT_PATTERN.matcher("\n" + processedContent);
+            int componentCount = 0;
+
+            // Find all components
+            while (componentMatcher.find()) {
+                componentCount++;
+
+                String componentTypeStr = componentMatcher.group(1).trim();
+                String componentContent = componentMatcher.group(2).trim();
+
+                log.debug("Found {} component with {} characters of content",
+                        componentTypeStr, componentContent.length());
+
+                // Map string to enum
+                SlideComponent.ComponentType componentType;
+                try {
+                    componentType = SlideComponent.ComponentType.valueOf(componentTypeStr);
+                } catch (IllegalArgumentException e) {
+                    log.warn("Unknown component type: {} in slide: {}", componentTypeStr, slide.getTitle());
+                    continue;
+                }
+
+                try {
+                    // Create the component
+                    SlideComponent component = slideComponentService.createComponent(
+                            slide.getId(),
+                            componentType,
+                            componentContent
+                    );
+                    log.info("Created {} component for slide: {}", componentType, slide.getTitle());
+                } catch (Exception e) {
+                    log.error("Failed to create component {} for slide {}: {}",
+                            componentTypeStr, slide.getTitle(), e.getMessage());
+                }
             }
-            log.debug("TOTAL MATCHES: {}", matchCount);
+
+            if (componentCount == 0) {
+                log.warn("No components found in slide: {}", slide.getTitle());
+            } else {
+                log.info("Processed {} components for slide: {}", componentCount, slide.getTitle());
+            }
+
+            log.debug("TOTAL MATCHES: {}", componentCount);
 
             // Create the version with our full content
             ContentVersion defaultVersion = ContentVersion.builder()
@@ -178,6 +218,8 @@ public class SlideComponentExtractor implements CommandLineRunner {
                     .versionNumber(1)
                     .createdAt(LocalDateTime.now())
                     .build();
+
+
 
             try {
                 // Save the new version
