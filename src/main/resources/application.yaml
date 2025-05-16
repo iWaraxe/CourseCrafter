@@ -30,6 +30,7 @@ git:
     root: /Users/igorwaraxe/ClaudeCode/CourseUpdater/course-material-repo/BasicAiCourse
     remote: origin
     defaultBranch: main
+  enabled: true
   auth:
     githubToken: ${GITHUB_PAT}   # read from env-var
 
@@ -44,6 +45,8 @@ coursecrafter:
 
 logging:
   level:
+    com.coherentsolutions.coursecrafter.util: DEBUG
+    com.coherentsolutions.coursecrafter.infrastructure.git: DEBUG
     com.coherentsolutions.coursecrafter.application.api.ai: DEBUG
     com.coherentsolutions.coursecrafter.application.service: DEBUG
     com.coherentsolutions.coursecrafter.domain.content.service: DEBUG

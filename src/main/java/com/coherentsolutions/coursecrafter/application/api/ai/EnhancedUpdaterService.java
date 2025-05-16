@@ -1,5 +1,6 @@
 package com.coherentsolutions.coursecrafter.application.api.ai;
 
+import com.coherentsolutions.coursecrafter.infrastructure.git.GitContentSyncService;
 import com.coherentsolutions.coursecrafter.presentation.dto.ai.AiProposalDto;
 import com.coherentsolutions.coursecrafter.domain.content.model.ContentNode;
 import com.coherentsolutions.coursecrafter.domain.content.repository.ContentNodeRepository;
@@ -7,6 +8,7 @@ import com.coherentsolutions.coursecrafter.domain.version.repository.ContentVers
 import com.coherentsolutions.coursecrafter.domain.content.service.ContentNodeService;
 import com.coherentsolutions.coursecrafter.infrastructure.git.GitCliService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,6 +18,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class EnhancedUpdaterService {
@@ -24,6 +27,7 @@ public class EnhancedUpdaterService {
     private final ContentVersionRepository versionRepository;
     private final ContentNodeService nodeService;
     private final GitCliService gitService;
+    private final GitContentSyncService gitContentSyncService;
 
     /**
      * Apply a list of AI-generated proposals to the content structure
@@ -33,50 +37,87 @@ public class EnhancedUpdaterService {
             throws IOException, InterruptedException {
 
         List<ContentNode> updatedNodes = new ArrayList<>();
+        boolean gitChanges = false;
+
+        // Create a single branch for all changes
         String branchName = "content-update-" + System.currentTimeMillis();
+        gitService.createBranch(branchName);
 
-        for (AiProposalDto proposal : proposals) {
-            ContentNode node;
+        try {
+            // Process all proposals
+            for (AiProposalDto proposal : proposals) {
+                ContentNode node;
 
-            switch (proposal.action()) {
-                case "ADD":
-                    node = createNewNode(proposal);
-                    updatedNodes.add(node);
-                    break;
-
-                case "UPDATE":
-                    node = updateExistingNode(proposal);
-                    if (node != null) {
+                switch (proposal.action()) {
+                    case "ADD":
+                        node = createNewNode(proposal);
                         updatedNodes.add(node);
-                    }
-                    break;
 
-                case "DELETE":
-                    deleteNode(proposal.targetNodeId());
-                    break;
+                        // Sync the node to the Git repository
+                        gitChanges |= gitContentSyncService.syncNodeToFile(node);
+                        break;
+
+                    case "UPDATE":
+                        node = updateExistingNode(proposal);
+                        if (node != null) {
+                            updatedNodes.add(node);
+
+                            // Sync the node to the Git repository
+                            gitChanges |= gitContentSyncService.syncNodeToFile(node);
+                        }
+                        break;
+
+                    case "DELETE":
+                        deleteNode(proposal.targetNodeId());
+                        break;
+                }
             }
+
+            // Make a single commit with all changes
+            if (!updatedNodes.isEmpty() && gitChanges) {
+                gitService.commitAllChanges(
+                        "Apply AI content updates: " + updatedNodes.size() + " changes");
+
+                // Push and create PR
+                gitService.pushBranch(branchName);
+                gitService.createPr(
+                        branchName,
+                        "Content Updates: " + updatedNodes.size() + " changes",
+                        generatePrDescription(proposals, updatedNodes));
+            } else if (!updatedNodes.isEmpty()) {
+                log.warn("Database nodes were updated but no Git files were changed. PR not created.");
+            }
+
+            return updatedNodes;
+        } catch (Exception e) {
+            log.error("Failed to apply proposals: {}", e.getMessage(), e);
+            // Try to clean up the branch if possible
+            try {
+                gitService.resetToMain();
+            } catch (Exception resetEx) {
+                log.error("Failed to reset to main: {}", resetEx.getMessage());
+            }
+            throw e;
         }
-
-        // Commit all changes together
-        if (!updatedNodes.isEmpty()) {
-            gitService.commitAndPush(
-                    branchName,
-                    "Apply AI content updates: " + updatedNodes.size() + " changes");
-
-            // Create PR
-            gitService.createPr(
-                    branchName,
-                    "Content Updates: " + updatedNodes.size() + " changes",
-                    generatePrDescription(proposals, updatedNodes));
-        }
-
-        return updatedNodes;
     }
 
     private ContentNode createNewNode(AiProposalDto proposal) throws IOException, InterruptedException {
-        // Get parent node
-        ContentNode parent = nodeRepository.findById(proposal.parentNodeId())
-                .orElseThrow(() -> new IllegalArgumentException("Parent node not found: " + proposal.parentNodeId()));
+        // Get parent node with better fallback handling
+        ContentNode parent;
+
+        if (proposal.parentNodeId() == 0 || !nodeRepository.existsById(proposal.parentNodeId())) {
+            // Find the first course node as a fallback parent
+            parent = nodeRepository.findByNodeType(ContentNode.NodeType.COURSE)
+                    .stream()
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalArgumentException("No course nodes found to use as parent"));
+
+            log.warn("Invalid parent ID {}. Using course node {} as fallback parent.",
+                    proposal.parentNodeId(), parent.getId());
+        } else {
+            parent = nodeRepository.findById(proposal.parentNodeId())
+                    .orElseThrow(() -> new IllegalArgumentException("Parent node not found: " + proposal.parentNodeId()));
+        }
 
         // Create the new node
         ContentNode node = ContentNode.builder()
@@ -142,11 +183,13 @@ public class EnhancedUpdaterService {
             sb.append("**Rationale:** ").append(proposal.rationale()).append("\n\n");
 
             if (!"DELETE".equals(proposal.action())) {
-                sb.append("<details>\n<summary>Content Preview</summary>\n\n```markdown\n");
+                // Use HTML details tag to avoid shell interpretation issues
+                sb.append("<details>\n<summary>Content Preview</summary>\n\n");
                 String contentPreview = proposal.content().length() > 300
                         ? proposal.content().substring(0, 300) + "..."
                         : proposal.content();
-                sb.append(contentPreview).append("\n```\n</details>\n\n");
+                // Use HTML code blocks instead of markdown code blocks
+                sb.append("<pre>\n").append(contentPreview).append("\n</pre>\n</details>\n\n");
             }
         }
 

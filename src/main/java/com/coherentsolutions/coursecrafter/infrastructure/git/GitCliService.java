@@ -7,6 +7,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 @Slf4j
 @Component
@@ -28,13 +31,108 @@ public class GitCliService {
         this.enabled = enabled;
     }
 
+    /**
+     * Create a new branch from main
+     */
+    public void createBranch(String branch) throws IOException, InterruptedException {
+        if (!enabled) {
+            log.info("Git operations disabled, skipping branch creation");
+            return;
+        }
+
+        run("git", "-C", repoRoot, "checkout", "main");
+        run("git", "-C", repoRoot, "pull", "origin", "main");
+        run("git", "-C", repoRoot, "checkout", "-B", branch);
+    }
+
+    /**
+     * Commit all changes in the working directory
+     */
+    public void commitAllChanges(String message) throws IOException, InterruptedException {
+        if (!enabled) {
+            log.info("Git operations disabled, skipping commit");
+            return;
+        }
+
+        // Add all changes
+        run("git", "-C", repoRoot, "add", ".");
+
+        // Check if there are changes to commit
+        ProcessBuilder pb = new ProcessBuilder("git", "-C", repoRoot, "status", "--porcelain");
+        Process p = pb.start();
+        String changes = new String(p.getInputStream().readAllBytes()).trim();
+        p.waitFor();
+
+        if (changes.isEmpty()) {
+            log.info("No changes to commit, skipping commit operation");
+            return;
+        }
+
+        // Commit with the message
+        run("git", "-C", repoRoot, "commit", "-m", message);
+    }
+
+    /**
+     * Push the current branch to the remote
+     */
+    public void pushBranch(String branch) throws IOException, InterruptedException {
+        if (!enabled) {
+            log.info("Git operations disabled, skipping push");
+            return;
+        }
+
+        run("git", "-C", repoRoot, "push", "-f", remote, branch);
+    }
+
+    /**
+     * Reset to main branch and clean the working directory
+     */
+    public void resetToMain() throws IOException, InterruptedException {
+        if (!enabled) {
+            return;
+        }
+
+        run("git", "-C", repoRoot, "reset", "--hard", "HEAD");
+        run("git", "-C", repoRoot, "clean", "-fd");
+        run("git", "-C", repoRoot, "checkout", "main");
+    }
+
     public void commitAndPush(String branch, String message) throws IOException, InterruptedException {
         if (!enabled) {
             log.info("Git operations disabled, skipping commit and push");
             return; // Skip Git operations if disabled
         }
 
+        // Check if repo path exists
+        Path repoPath = Paths.get(repoRoot);
+        if (!Files.exists(repoPath)) {
+            log.error("Git repository path does not exist: {}", repoRoot);
+            log.info("Creating directory structure...");
+            try {
+                Files.createDirectories(repoPath);
+                // Initialize git repo if needed
+                ProcessBuilder initPb = new ProcessBuilder("git", "init", repoRoot);
+                Process initProcess = initPb.start();
+                if (initProcess.waitFor() != 0) {
+                    log.error("Failed to initialize git repository");
+                    return;
+                }
+            } catch (IOException e) {
+                log.error("Failed to create repository directory: {}", e.getMessage());
+                return;
+            }
+        }
+
         try {
+            // First check if git is available
+            ProcessBuilder checkGit = new ProcessBuilder("git", "--version");
+            Process gitCheck = checkGit.start();
+            int gitResult = gitCheck.waitFor();
+            if (gitResult != 0) {
+                log.error("Git command not available. Please ensure git is installed and in the PATH.");
+                return;
+            }
+
             run("git", "-C", repoRoot, "checkout", "-B", branch, defaultBranch);
             run("git", "-C", repoRoot, "add", ".");
 
@@ -53,8 +151,8 @@ public class GitCliService {
             run("git", "-C", repoRoot, "push", "-f", remote, branch);
         } catch (Exception e) {
             log.error("Git operation failed: {}", e.getMessage());
-            // Either re-throw or handle more gracefully
-            throw e;
+            // Don't rethrow - log the error but don't fail the whole operation
+            // This allows the database changes to persist even if Git fails
         }
     }
 
@@ -67,16 +165,43 @@ public class GitCliService {
      * @param body   PR body/description
      */
     public void createPr(String branch, String title, String body) throws IOException, InterruptedException {
-        // We have to run inside the repo root; easiest is to wrap the command in `sh -c "cd … && gh …"`
-        String cmd = String.format(
-                "cd %s && /opt/homebrew/bin/gh pr create --title \"%s\" --body \"%s\" --base %s --head %s",
-                repoRoot,
-                title.replace("\"", "\\\""),
-                body.replace("\"", "\\\""),
-                defaultBranch,
-                branch
-        );
-        run("sh", "-c", cmd);
+        if (!enabled) {
+            log.info("Git operations disabled, skipping PR creation");
+            return;
+        }
+
+        try {
+            // Check if gh CLI is available
+            ProcessBuilder checkGh = new ProcessBuilder("/opt/homebrew/bin/gh", "--version");
+            Process ghCheck = checkGh.start();
+            int ghResult = ghCheck.waitFor();
+            if (ghResult != 0) {
+                log.error("GitHub CLI not available. Please ensure gh is installed.");
+                return;
+            }
+
+            // Write the PR body to a temporary file to avoid shell interpretation issues
+            Path tempFile = Files.createTempFile("pr-description", ".md");
+            Files.writeString(tempFile, body);
+
+            // Create PR using the file for the body
+            String cmd = String.format(
+                    "cd %s && /opt/homebrew/bin/gh pr create --title \"%s\" --body-file \"%s\" --base %s --head %s",
+                    repoRoot,
+                    title.replace("\"", "\\\""),
+                    tempFile.toAbsolutePath(),
+                    defaultBranch,
+                    branch
+            );
+
+            run("sh", "-c", cmd);
+
+            // Delete the temporary file
+            Files.deleteIfExists(tempFile);
+        } catch (Exception e) {
+            log.error("Failed to create PR: {}", e.getMessage());
+            // Log but don't fail the entire operation
+        }
     }
 
     private void run(String... cmd) throws IOException, InterruptedException {
