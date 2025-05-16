@@ -69,7 +69,7 @@ public class GitCliService {
     public void createPr(String branch, String title, String body) throws IOException, InterruptedException {
         // We have to run inside the repo root; easiest is to wrap the command in `sh -c "cd … && gh …"`
         String cmd = String.format(
-                "cd %s && gh pr create --title \"%s\" --body \"%s\" --base %s --head %s",
+                "cd %s && /opt/homebrew/bin/gh pr create --title \"%s\" --body \"%s\" --base %s --head %s",
                 repoRoot,
                 title.replace("\"", "\\\""),
                 body.replace("\"", "\\\""),
