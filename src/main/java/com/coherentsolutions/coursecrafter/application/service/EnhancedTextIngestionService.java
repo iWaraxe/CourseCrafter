@@ -114,4 +114,18 @@ public class EnhancedTextIngestionService {
     public List<ContentNode> processContent(String rawContent) throws IOException, InterruptedException {
         return processContent(rawContent, null, null, null);
     }
+
+    /**
+     * Just summarize content without further processing
+     */
+    public String summarizeContent(String content, String courseName, String audience, LocalDate reportDate) {
+        return summarizationService.summarize(content, courseName, audience, reportDate);
+    }
+
+    /**
+     * Just analyze content without applying updates
+     */
+    public List<AiProposalDto> analyzeContent(String cleanedContent, String courseName) {
+        return analyzerService.analyzeContentForCourse(courseName, cleanedContent);
+    }
 }

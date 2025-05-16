@@ -10,6 +10,7 @@ import com.coherentsolutions.coursecrafter.domain.version.model.ContentVersion;
 import com.coherentsolutions.coursecrafter.domain.content.repository.ContentNodeRepository;
 import com.coherentsolutions.coursecrafter.domain.version.repository.ContentVersionRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.Comparator;
@@ -17,6 +18,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ContentHierarchyService {
@@ -136,54 +138,70 @@ public class ContentHierarchyService {
      * Generates a detailed text-based outline with slide components
      */
     public String generateDetailedOutlineContext(String courseName) {
-        // Get all content nodes related to this course
-        List<ContentNode> courseNodes = nodeRepository.findByPathPattern(courseName + "/%");
-
-        // Build a hierarchical representation with all slide titles
+        // Build a hierarchical representation
         StringBuilder builder = new StringBuilder();
         builder.append("# Course: ").append(courseName).append("\n\n");
 
-        // Sort nodes by path to ensure correct hierarchical order
-        courseNodes.sort(Comparator.comparing(ContentNode::getPath));
+        // First get the course node
+        ContentNode courseNode = nodeRepository.findByNodeType(ContentNode.NodeType.COURSE)
+                .stream()
+                .filter(node -> node.getTitle().equals(courseName) || courseName.equals("BasicAiCourse"))
+                .findFirst()
+                .orElse(null);
 
-        for (ContentNode node : courseNodes) {
-            switch (node.getNodeType()) {
-                case COURSE:
-                    builder.append("# Course: ").append(node.getTitle()).append("\n\n");
-                    break;
-                case MODULE:
-                    builder.append("# Module: ").append(node.getTitle()).append("\n\n");
-                    break;
-                case LECTURE:
-                    builder.append("## Lecture ").append(node.getNodeNumber()).append(": ")
-                            .append(node.getTitle()).append("\n\n");
-                    break;
-                case SECTION:
-                    builder.append("### Section ").append(node.getNodeNumber()).append(": ")
-                            .append(node.getTitle()).append("\n\n");
-                    break;
-                case TOPIC:
-                    builder.append("#### Topic ").append(node.getNodeNumber()).append(": ")
-                            .append(node.getTitle()).append("\n\n");
-                    break;
-                case SLIDE:
-                    builder.append("##### Slide ").append(node.getNodeNumber()).append(": ")
-                            .append(node.getTitle()).append("\n\n");
+        if (courseNode == null) {
+            log.warn("No course node found with name: {}", courseName);
+            return builder.toString(); // Return just the course title
+        }
 
-                    // Include the existing slide components for context
-                    try {
-                        List<SlideComponent> components = slideComponentRepository.findBySlideNodeIdOrderByDisplayOrder(node.getId());
-                        if (!components.isEmpty()) {
-                            for (SlideComponent comp : components) {
-                                builder.append("###### ").append(comp.getComponentType()).append("\n");
-                                builder.append(comp.getContent().substring(0, Math.min(50, comp.getContent().length()))).append("...\n\n");
+        // Now get all lectures (direct children of course)
+        List<ContentNode> lectures = nodeRepository.findByParentIdOrderByDisplayOrder(courseNode.getId());
+
+        for (ContentNode lecture : lectures) {
+            builder.append("## Lecture ").append(lecture.getNodeNumber() != null ? lecture.getNodeNumber() : "")
+                    .append(": ").append(lecture.getTitle()).append("\n\n");
+
+            // Get sections under this lecture
+            List<ContentNode> sections = nodeRepository.findByParentIdOrderByDisplayOrder(lecture.getId());
+
+            for (ContentNode section : sections) {
+                builder.append("### Section ").append(section.getNodeNumber() != null ? section.getNodeNumber() : "")
+                        .append(": ").append(section.getTitle()).append("\n\n");
+
+                // Get topics under this section
+                List<ContentNode> topics = nodeRepository.findByParentIdOrderByDisplayOrder(section.getId());
+
+                for (ContentNode topic : topics) {
+                    builder.append("#### Topic ").append(topic.getNodeNumber() != null ? topic.getNodeNumber() : "")
+                            .append(": ").append(topic.getTitle()).append("\n\n");
+
+                    // Get slides under this topic
+                    List<ContentNode> slides = nodeRepository.findByParentIdOrderByDisplayOrder(topic.getId());
+
+                    for (ContentNode slide : slides) {
+                        builder.append("##### Slide ").append(slide.getNodeNumber() != null ? slide.getNodeNumber() : "")
+                                .append(": ").append(slide.getTitle()).append("\n\n");
+
+                        // Include slide components
+                        try {
+                            List<SlideComponent> components = slideComponentRepository.findBySlideNodeIdOrderByDisplayOrder(slide.getId());
+                            if (!components.isEmpty()) {
+                                for (SlideComponent comp : components) {
+                                    builder.append("###### ").append(comp.getComponentType()).append("\n");
+                                    String content = comp.getContent();
+                                    if (content != null && !content.isBlank()) {
+                                        builder.append(content.substring(0, Math.min(50, content.length()))).append("...\n\n");
+                                    } else {
+                                        builder.append("(Empty content)\n\n");
+                                    }
+                                }
                             }
+                        } catch (Exception e) {
+                            log.error("Error retrieving components for slide {}: {}", slide.getId(), e.getMessage());
+                            builder.append("(Component data error)\n\n");
                         }
-                    } catch (Exception e) {
-                        // Handle gracefully if component repository is not available
-                        builder.append("(Component data not available)\n\n");
                     }
-                    break;
+                }
             }
         }
 

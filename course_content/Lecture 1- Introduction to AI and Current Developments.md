@@ -1,5 +1,5 @@
 # Beginners AI. Mastering modern AI tools
-## Lecture 1: Introduction to AI and Current Developments
+## Lecture 1. Introduction to AI and Current Developments
 
 ### 1. Introduction: Understanding AI
 
