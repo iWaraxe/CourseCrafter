@@ -6,51 +6,46 @@ import com.coherentsolutions.coursecrafter.domain.slide.model.SlideComponent;
 import com.coherentsolutions.coursecrafter.domain.slide.repository.SlideComponentRepository;
 import com.coherentsolutions.coursecrafter.domain.slide.service.SlideComponentService;
 import com.coherentsolutions.coursecrafter.domain.version.model.ContentVersion;
-import jakarta.transaction.Transactional; // Use Spring's @Transactional
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
-// import org.springframework.transaction.annotation.Propagation; // Usually not needed with class-level @Transactional
 
-// import java.io.IOException;
-// import java.nio.file.DirectoryStream;
-// import java.nio.file.Files;
-// import java.nio.file.Path;
-// import java.nio.file.Paths;
-// import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
-// import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Matcher;
-// import java.util.regex.Pattern;
+import java.util.regex.Pattern;
 
 @Component
 @RequiredArgsConstructor
 @Slf4j
-@Order(3) // Ensure this runs after MarkdownCourseParser if it's also a CommandLineRunner, or after main population
+@Order(3)
 public class SlideComponentExtractor implements CommandLineRunner {
 
     private final ContentNodeRepository contentNodeRepository;
     private final SlideComponentRepository slideComponentRepository;
     private final SlideComponentService slideComponentService;
-    // private final ContentVersionRepository contentVersionRepository; // May not be needed
 
     @Autowired(required = false)
     private Boolean databaseImportEnabled;
 
+    // Improved component pattern that captures content more reliably
+    private static final Pattern IMPROVED_COMPONENT_PATTERN = Pattern.compile(
+            "^######\\s+(SCRIPT|VISUAL|NOTES|DEMONSTRATION)\\s*$(\\r?\\n|\\r)(.*?)(?=\\r?\\n######\\s+(?:SCRIPT|VISUAL|NOTES|DEMONSTRATION)|\\Z)",
+            Pattern.MULTILINE | Pattern.DOTALL
+    );
+
     @Override
-    @Transactional // Use Spring's @Transactional
+    @Transactional
     public void run(String... args) throws Exception {
         if (databaseImportEnabled != null && !databaseImportEnabled) {
             log.info("Database import is disabled. Skipping slide component extraction by SlideComponentExtractor.");
             return;
         }
 
-        // Optional: Check if components were already created by MarkdownCourseParser.
-        // If MarkdownCourseParser is robust, this entire CommandLineRunner might only be for repair/one-off.
         if (slideComponentRepository.count() > 0) {
             log.info("Slide components seem to already exist ({} found). SlideComponentExtractor will skip its run.", slideComponentRepository.count());
             log.info("If components are missing or incorrect, ensure MarkdownCourseParser is functioning as expected or clear the slide_component table for a fresh extraction.");
@@ -62,14 +57,12 @@ public class SlideComponentExtractor implements CommandLineRunner {
         log.info("SlideComponentExtractor: Slide component extraction completed.");
     }
 
-    @Transactional // Ensure operations within are transactional
+    @Transactional
     protected void extractSlideComponentsFromContentNodes() {
         List<ContentNode> slideNodes = contentNodeRepository.findByNodeType(ContentNode.NodeType.SLIDE);
         log.info("SlideComponentExtractor: Found {} slide nodes to process for components.", slideNodes.size());
 
         for (ContentNode slide : slideNodes) {
-            // Get the latest version's content, which MarkdownCourseParser should have stored.
-            // This content is the full Markdown of the slide (e.g., "##### [seq:010] Title\nBody...")
             Optional<String> latestVersionContentOpt = slide.getVersions().stream()
                     .max((v1, v2) -> v1.getVersionNumber().compareTo(v2.getVersionNumber()))
                     .map(ContentVersion::getContent);
@@ -110,16 +103,19 @@ public class SlideComponentExtractor implements CommandLineRunner {
                 continue;
             }
 
-            // Now, parse components from the extracted slideBodyForComponents
-            Matcher componentMatcher = MarkdownPatterns.COMPONENT_PATTERN.matcher(slideBodyForComponents);
+            // Now, parse components using the improved pattern
+            Matcher componentMatcher = IMPROVED_COMPONENT_PATTERN.matcher(slideBodyForComponents);
             int componentsFoundInThisSlide = 0;
+
             while (componentMatcher.find()) {
                 componentsFoundInThisSlide++;
                 String componentTypeStr = componentMatcher.group(1).trim().toUpperCase();
-                String componentContent = componentMatcher.group(2) != null ? componentMatcher.group(2).trim() : "";
+                String componentContent = componentMatcher.group(3) != null ? componentMatcher.group(3).trim() : "";
 
-                log.debug("SlideComponentExtractor: Found component candidate for slide '{}': type='{}', content length={}",
-                        slide.getTitle(), componentTypeStr, componentContent.length());
+                log.debug("SlideComponentExtractor: Found component of type '{}' with content length={}. First 50 chars: '{}'",
+                        componentTypeStr,
+                        componentContent.length(),
+                        componentContent.length() > 50 ? componentContent.substring(0, 50) + "..." : componentContent);
 
                 SlideComponent.ComponentType componentType;
                 try {
@@ -130,7 +126,6 @@ public class SlideComponentExtractor implements CommandLineRunner {
                 }
 
                 // Check if this specific component already exists (e.g. if script is run multiple times)
-                // MODIFIED LINE BELOW:
                 boolean componentExists = slideComponentRepository.findBySlideIdAndType(slide.getId(), componentType).isPresent();
                 if (componentExists) {
                     log.debug("SlideComponentExtractor: {} component for slide '{}' already exists. Skipping creation.", componentType, slide.getTitle());

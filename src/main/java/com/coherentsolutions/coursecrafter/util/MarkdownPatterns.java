@@ -49,6 +49,18 @@ public final class MarkdownPatterns {
             Pattern.MULTILINE | Pattern.DOTALL
     );
 
+    /**
+     * IMPROVED_COMPONENT_PATTERN:
+     * A more reliable pattern for extracting component content, especially for multiline content
+     * Group 1: Component type (SCRIPT, VISUAL, NOTES, DEMONSTRATION)
+     * Group 2: Newline character(s)
+     * Group 3: Component content (everything until the next component or end of input)
+     */
+    public static final Pattern IMPROVED_COMPONENT_PATTERN = Pattern.compile(
+            "^######\\s+(SCRIPT|VISUAL|NOTES|DEMONSTRATION)\\s*$(\\r?\\n|\\r)(.*?)(?=\\r?\\n######\\s+(?:SCRIPT|VISUAL|NOTES|DEMONSTRATION)|\\Z)",
+            Pattern.MULTILINE | Pattern.DOTALL
+    );
+
     // Table structure pattern - remains basic as it's not the focus of current issues.
     // Proper Markdown table parsing is complex and usually requires more than a single regex.
     public static final Pattern TABLE_PATTERN = Pattern.compile("\\|(.+?)\\|", Pattern.DOTALL);

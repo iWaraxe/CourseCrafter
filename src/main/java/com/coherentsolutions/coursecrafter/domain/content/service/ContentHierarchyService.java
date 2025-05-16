@@ -135,6 +135,93 @@ public class ContentHierarchyService {
     }
 
     /**
+     * Generates a detailed text-based outline with minimal component info
+     */
+    public String generateDetailedOutlineWithComponents(String courseName) {
+        // Build a hierarchical representation
+        StringBuilder builder = new StringBuilder();
+        builder.append("# Course: ").append(courseName).append("\n\n");
+
+        // First get the course node
+        ContentNode courseNode = nodeRepository.findByNodeType(ContentNode.NodeType.COURSE)
+                .stream()
+                .filter(node -> node.getTitle().equals(courseName) || courseName.equals("BasicAiCourse"))
+                .findFirst()
+                .orElse(null);
+
+        if (courseNode == null) {
+            log.warn("No course node found with name: {}", courseName);
+            return builder.toString(); // Return just the course title
+        }
+
+        // Now get all lectures (direct children of course)
+        List<ContentNode> lectures = nodeRepository.findByParentIdOrderByDisplayOrder(courseNode.getId());
+
+        for (ContentNode lecture : lectures) {
+            builder.append("## Lecture ").append(lecture.getTitle()).append("\n\n");
+
+            // Get sections under this lecture
+            List<ContentNode> sections = nodeRepository.findByParentIdOrderByDisplayOrder(lecture.getId());
+
+            for (ContentNode section : sections) {
+                // For sections, format properly with nodeNumber and clean title
+                String sectionTitle = section.getTitle();
+                String nodeNumber = section.getNodeNumber();
+
+                // Clean up the title if it starts with the numeric prefix
+                if (sectionTitle.matches("^\\d+\\.\\d+\\.\\s+.*")) {
+                    sectionTitle = sectionTitle.replaceFirst("^\\d+\\.\\d+\\.\\s+", "");
+                }
+
+                builder.append("### Section ").append(nodeNumber).append(". ").append(sectionTitle).append("\n\n");
+
+                // Get topics under this section
+                List<ContentNode> topics = nodeRepository.findByParentIdOrderByDisplayOrder(section.getId());
+
+                for (ContentNode topic : topics) {
+                    // For topics, similar cleaning
+                    String topicTitle = topic.getTitle();
+                    String topicNumber = topic.getNodeNumber();
+
+                    // Clean up the title if it starts with the numeric prefix
+                    if (topicTitle.matches("^\\d+\\.\\d+\\.\\d+\\.\\s+.*")) {
+                        topicTitle = topicTitle.replaceFirst("^\\d+\\.\\d+\\.\\d+\\.\\s+", "");
+                    }
+
+                    builder.append("#### Topic ").append(topicNumber).append(". ").append(topicTitle).append("\n\n");
+
+                    // Get slides under this topic
+                    List<ContentNode> slides = nodeRepository.findByParentIdOrderByDisplayOrder(topic.getId());
+
+                    for (ContentNode slide : slides) {
+                        builder.append("##### Slide ").append(slide.getNodeNumber()).append(": ").append(slide.getTitle()).append("\n\n");
+
+                        // Only list component types, without trying to access content
+                        try {
+                            List<SlideComponent> components = slideComponentRepository.findBySlideNodeIdOrderByDisplayOrder(slide.getId());
+                            if (!components.isEmpty()) {
+                                builder.append("###### Components: ");
+                                for (int i = 0; i < components.size(); i++) {
+                                    builder.append(components.get(i).getComponentType());
+                                    if (i < components.size() - 1) {
+                                        builder.append(", ");
+                                    }
+                                }
+                                builder.append("\n\n");
+                            }
+                        } catch (Exception e) {
+                            log.error("Error retrieving components for slide {}: {}", slide.getId(), e.getMessage());
+                            // Don't append error message to the builder
+                        }
+                    }
+                }
+            }
+        }
+
+        return builder.toString();
+    }
+
+    /**
      * Generates a detailed text-based outline with slide components
      */
     public String generateDetailedOutlineContext(String courseName) {
@@ -158,48 +245,47 @@ public class ContentHierarchyService {
         List<ContentNode> lectures = nodeRepository.findByParentIdOrderByDisplayOrder(courseNode.getId());
 
         for (ContentNode lecture : lectures) {
-            builder.append("## Lecture ").append(lecture.getNodeNumber() != null ? lecture.getNodeNumber() : "")
-                    .append(": ").append(lecture.getTitle()).append("\n\n");
+            // For lectures, use the title directly which should already contain the number
+            builder.append("## Lecture ").append(lecture.getTitle()).append("\n\n");
 
             // Get sections under this lecture
             List<ContentNode> sections = nodeRepository.findByParentIdOrderByDisplayOrder(lecture.getId());
 
             for (ContentNode section : sections) {
-                builder.append("### Section ").append(section.getNodeNumber() != null ? section.getNodeNumber() : "")
-                        .append(": ").append(section.getTitle()).append("\n\n");
+                // For sections, format properly with nodeNumber and clean title
+                String sectionTitle = section.getTitle();
+                String nodeNumber = section.getNodeNumber();
+
+                // Clean up the title if it starts with the numeric prefix
+                if (sectionTitle.matches("^\\d+\\.\\d+\\.\\s+.*")) {
+                    sectionTitle = sectionTitle.replaceFirst("^\\d+\\.\\d+\\.\\s+", "");
+                }
+
+                builder.append("### Section ").append(nodeNumber).append(". ").append(sectionTitle).append("\n\n");
 
                 // Get topics under this section
                 List<ContentNode> topics = nodeRepository.findByParentIdOrderByDisplayOrder(section.getId());
 
                 for (ContentNode topic : topics) {
-                    builder.append("#### Topic ").append(topic.getNodeNumber() != null ? topic.getNodeNumber() : "")
-                            .append(": ").append(topic.getTitle()).append("\n\n");
+                    // For topics, similar cleaning
+                    String topicTitle = topic.getTitle();
+                    String topicNumber = topic.getNodeNumber();
+
+                    // Clean up the title if it starts with the numeric prefix
+                    if (topicTitle.matches("^\\d+\\.\\d+\\.\\d+\\.\\s+.*")) {
+                        topicTitle = topicTitle.replaceFirst("^\\d+\\.\\d+\\.\\d+\\.\\s+", "");
+                    }
+
+                    builder.append("#### Topic ").append(topicNumber).append(". ").append(topicTitle).append("\n\n");
 
                     // Get slides under this topic
                     List<ContentNode> slides = nodeRepository.findByParentIdOrderByDisplayOrder(topic.getId());
 
                     for (ContentNode slide : slides) {
-                        builder.append("##### Slide ").append(slide.getNodeNumber() != null ? slide.getNodeNumber() : "")
-                                .append(": ").append(slide.getTitle()).append("\n\n");
+                        builder.append("##### Slide ").append(slide.getNodeNumber()).append(": ").append(slide.getTitle()).append("\n\n");
 
-                        // Include slide components
-                        try {
-                            List<SlideComponent> components = slideComponentRepository.findBySlideNodeIdOrderByDisplayOrder(slide.getId());
-                            if (!components.isEmpty()) {
-                                for (SlideComponent comp : components) {
-                                    builder.append("###### ").append(comp.getComponentType()).append("\n");
-                                    String content = comp.getContent();
-                                    if (content != null && !content.isBlank()) {
-                                        builder.append(content.substring(0, Math.min(50, content.length()))).append("...\n\n");
-                                    } else {
-                                        builder.append("(Empty content)\n\n");
-                                    }
-                                }
-                            }
-                        } catch (Exception e) {
-                            log.error("Error retrieving components for slide {}: {}", slide.getId(), e.getMessage());
-                            builder.append("(Component data error)\n\n");
-                        }
+                        // For the detailed outline, we don't include component content
+                        // Just list that the slide exists, without trying to access components
                     }
                 }
             }
