@@ -1,4 +1,5 @@
-# Beginners AI. Mastering modern AI tools
+# BasicAICourse
+
 ## Lecture 2. Practical AI Application - Text, Code and Visuals
 
 ### 1. Introduction: From Theory to Practice

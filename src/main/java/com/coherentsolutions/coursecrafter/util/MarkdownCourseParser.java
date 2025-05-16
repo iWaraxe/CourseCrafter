@@ -59,8 +59,17 @@ public class MarkdownCourseParser {
         }
 
         String courseTitle = courseMatcher.group(1).trim();
-        log.info("Creating course: {}", courseTitle);
 
+        // Check if course with this title already exists
+        Optional<ContentNode> existingCourse = contentNodeRepository.findByNodeTypeAndTitle(ContentNode.NodeType.COURSE, courseTitle);
+
+        if (existingCourse.isPresent()) {
+            log.info("Found existing course: {} (ID: {})", courseTitle, existingCourse.get().getId());
+            return existingCourse.get();
+        }
+
+        // If no existing course, create a new one
+        log.info("Creating new course: {}", courseTitle);
         ContentNode courseNode = ContentNode.builder()
                 .nodeType(ContentNode.NodeType.COURSE)
                 .title(courseTitle)

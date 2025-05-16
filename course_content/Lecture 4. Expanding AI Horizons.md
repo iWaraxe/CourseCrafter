@@ -1,4 +1,4 @@
-# Beginners AI. Mastering modern AI tools
+# BasicAICourse
 
 ## Lecture 4. Specialized AI tools and advanced workflows
 

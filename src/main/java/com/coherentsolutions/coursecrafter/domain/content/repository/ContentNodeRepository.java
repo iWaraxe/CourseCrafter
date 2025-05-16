@@ -18,6 +18,8 @@ public interface ContentNodeRepository extends JpaRepository<ContentNode, Long> 
 
     List<ContentNode> findByNodeType(ContentNode.NodeType nodeType);
 
+    Optional<ContentNode> findByNodeTypeAndTitle(ContentNode.NodeType nodeType, String title);
+
     @Query("SELECT cn FROM ContentNode cn LEFT JOIN FETCH cn.children WHERE cn.id = :id")
     Optional<ContentNode> findByIdWithChildren(Long id);
 
