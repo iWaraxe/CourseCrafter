@@ -7,6 +7,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 @Slf4j
 @Component
@@ -34,7 +37,36 @@ public class GitCliService {
             return; // Skip Git operations if disabled
         }
 
+        // Check if repo path exists
+        Path repoPath = Paths.get(repoRoot);
+        if (!Files.exists(repoPath)) {
+            log.error("Git repository path does not exist: {}", repoRoot);
+            log.info("Creating directory structure...");
+            try {
+                Files.createDirectories(repoPath);
+                // Initialize git repo if needed
+                ProcessBuilder initPb = new ProcessBuilder("git", "init", repoRoot);
+                Process initProcess = initPb.start();
+                if (initProcess.waitFor() != 0) {
+                    log.error("Failed to initialize git repository");
+                    return;
+                }
+            } catch (IOException e) {
+                log.error("Failed to create repository directory: {}", e.getMessage());
+                return;
+            }
+        }
+
         try {
+            // First check if git is available
+            ProcessBuilder checkGit = new ProcessBuilder("git", "--version");
+            Process gitCheck = checkGit.start();
+            int gitResult = gitCheck.waitFor();
+            if (gitResult != 0) {
+                log.error("Git command not available. Please ensure git is installed and in the PATH.");
+                return;
+            }
+
             run("git", "-C", repoRoot, "checkout", "-B", branch, defaultBranch);
             run("git", "-C", repoRoot, "add", ".");
 
@@ -53,8 +85,8 @@ public class GitCliService {
             run("git", "-C", repoRoot, "push", "-f", remote, branch);
         } catch (Exception e) {
             log.error("Git operation failed: {}", e.getMessage());
-            // Either re-throw or handle more gracefully
-            throw e;
+            // Don't rethrow - log the error but don't fail the whole operation
+            // This allows the database changes to persist even if Git fails
         }
     }
 
@@ -67,16 +99,35 @@ public class GitCliService {
      * @param body   PR body/description
      */
     public void createPr(String branch, String title, String body) throws IOException, InterruptedException {
-        // We have to run inside the repo root; easiest is to wrap the command in `sh -c "cd … && gh …"`
-        String cmd = String.format(
-                "cd %s && /opt/homebrew/bin/gh pr create --title \"%s\" --body \"%s\" --base %s --head %s",
-                repoRoot,
-                title.replace("\"", "\\\""),
-                body.replace("\"", "\\\""),
-                defaultBranch,
-                branch
-        );
-        run("sh", "-c", cmd);
+        if (!enabled) {
+            log.info("Git operations disabled, skipping PR creation");
+            return;
+        }
+
+        try {
+            // Check if gh CLI is available
+            ProcessBuilder checkGh = new ProcessBuilder("/opt/homebrew/bin/gh", "--version");
+            Process ghCheck = checkGh.start();
+            int ghResult = ghCheck.waitFor();
+            if (ghResult != 0) {
+                log.error("GitHub CLI not available. Please ensure gh is installed.");
+                return;
+            }
+
+            // We have to run inside the repo root; easiest is to wrap the command in `sh -c "cd … && gh …"`
+            String cmd = String.format(
+                    "cd %s && /opt/homebrew/bin/gh pr create --title \"%s\" --body \"%s\" --base %s --head %s",
+                    repoRoot,
+                    title.replace("\"", "\\\""),
+                    body.replace("\"", "\\\""),
+                    defaultBranch,
+                    branch
+            );
+            run("sh", "-c", cmd);
+        } catch (Exception e) {
+            log.error("Failed to create PR: {}", e.getMessage());
+            // Log but don't fail the entire operation
+        }
     }
 
     private void run(String... cmd) throws IOException, InterruptedException {

@@ -1,5 +1,7 @@
 package com.coherentsolutions.coursecrafter.application.api.ai;
 
+import com.coherentsolutions.coursecrafter.domain.content.model.ContentNode;
+import com.coherentsolutions.coursecrafter.domain.content.repository.ContentNodeRepository;
 import com.coherentsolutions.coursecrafter.presentation.dto.ai.AiProposalDto;
 import com.coherentsolutions.coursecrafter.presentation.dto.ai.AiProposalListDto;
 import com.coherentsolutions.coursecrafter.domain.content.service.ContentHierarchyService;
@@ -22,6 +24,7 @@ import java.util.List;
 public class EnhancedAnalyzerService {
 
     private final ContentHierarchyService hierarchyService;
+    private final ContentNodeRepository contentNodeRepository;
     private final ChatClient chatClient;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -309,37 +312,48 @@ public class EnhancedAnalyzerService {
         // Get course structure as formatted text for LLM context
         String courseContext = hierarchyService.generateLlmOutlineContextForCourse(courseName);
 
+        // First, fetch the actual course node ID to use as fallback
+        Long courseNodeId = contentNodeRepository.findByNodeType(ContentNode.NodeType.COURSE)
+                .stream()
+                .filter(node -> node.getTitle().equals(courseName))
+                .map(ContentNode::getId)
+                .findFirst()
+                .orElse(1L); // Fallback to ID 1 if not found
+
+        // Now include this in the system prompt
         var response = chatClient.prompt()
                 .system("""
-                    You are CourseCrafter AI, an expert system for educational content analysis.
-                    
-                    You will be given:
-                    1. The current structure and content of a course named "%s"
-                    2. New content to be integrated into this course
-                    
-                    Analyze where and how this new content should be integrated. Focus specifically on how
-                    it fits within the existing structure of the "%s" course.
-                    
-                    Return a JSON array of proposals following this schema:
-                    [{
-                      "targetNodeId": Long?,      // ID of existing node to modify, null for new nodes
-                      "parentNodeId": Long,       // Parent ID where to place new content
-                      "nodeType": "LECTURE|SECTION|TOPIC|SLIDE",
-                      "action": "ADD|UPDATE|DELETE",
-                      "title": String,            // Title for the node
-                      "nodeNumber": String?,      // Node number in the hierarchy (e.g., "1.2.3")
-                      "content": String,          // Content to add/replace
-                      "rationale": String,        // Explanation of why this change is needed
-                      "displayOrder": Integer?    // Suggested display order
-                    }]
-                    """.formatted(courseName, courseName))
+                You are CourseCrafter AI, an expert system for educational content analysis.
+                
+                You will be given:
+                1. The current structure and content of a course named "%s"
+                2. New content to be integrated into this course
+                
+                Analyze where and how this new content should be integrated. Focus specifically on how
+                it fits within the existing structure of the "%s" course.
+                
+                IMPORTANT: All parentNodeId values MUST be valid existing IDs. If unsure, use %d as the course root ID.
+                
+                Return a JSON array of proposals following this schema:
+                [{
+                  "targetNodeId": Long?,      // ID of existing node to modify, null for new nodes
+                  "parentNodeId": Long,       // Parent ID where to place new content (use %d if unsure)
+                  "nodeType": "LECTURE|SECTION|TOPIC|SLIDE",
+                  "action": "ADD|UPDATE|DELETE",
+                  "title": String,            // Title for the node
+                  "nodeNumber": String?,      // Node number in the hierarchy (e.g., "1.2.3")
+                  "content": String,          // Content to add/replace
+                  "rationale": String,        // Explanation of why this change is needed
+                  "displayOrder": Integer?    // Suggested display order
+                }]
+                """.formatted(courseName, courseName, courseNodeId, courseNodeId))
                 .user("""
-                    # %s COURSE STRUCTURE
-                    %s
-                    
-                    # NEW CONTENT TO INTEGRATE
-                    %s
-                    """.formatted(courseName, courseContext, newContent))
+                # %s COURSE STRUCTURE
+                %s
+                
+                # NEW CONTENT TO INTEGRATE
+                %s
+                """.formatted(courseName, courseContext, newContent))
                 .call();
 
         try {
