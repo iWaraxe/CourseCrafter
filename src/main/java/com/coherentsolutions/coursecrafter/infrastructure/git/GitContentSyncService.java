@@ -36,8 +36,11 @@ public class GitContentSyncService {
 
     /**
      * Synchronize a database node with its corresponding file in the Git repository
+     * @param node The content node to sync
+     * @param branchName The Git branch to use (if null, a new branch will be created)
+     * @return true if the file was successfully updated, false otherwise
      */
-    public boolean syncNodeToFile(ContentNode node) {
+    public boolean syncNodeToFile(ContentNode node, String branchName) {
         try {
             // Determine which lecture file this content belongs to
             Path targetFile = determineTargetFile(node);
@@ -192,78 +195,272 @@ public class GitContentSyncService {
      * Insert content at an appropriate location in the file based on node type and content
      */
     private String insertContentAtAppropriateLocation(String fileContent, ContentNode node, String nodeContent) {
+        log.debug("Attempting to insert content for node: {}, type: {}", node.getTitle(), node.getNodeType());
+
         // Default insert position is at the end of the file
         int insertPosition = fileContent.length();
 
         switch (node.getNodeType()) {
             case LECTURE:
-                // Insert after the last lecture
-                Pattern lecturePattern = Pattern.compile("^## ", Pattern.MULTILINE);
+                // For lectures, insert after the "## Lecture X:" header that matches the node title
+                // or at the end of the file if not found
+                Pattern lecturePattern = Pattern.compile("^## " + Pattern.quote(node.getTitle()), Pattern.MULTILINE);
                 Matcher lectureMatcher = lecturePattern.matcher(fileContent);
 
-                while (lectureMatcher.find()) {
-                    insertPosition = lectureMatcher.start();
-                }
+                if (lectureMatcher.find()) {
+                    // Found the lecture - now find the next section or end of file
+                    int lectureStart = lectureMatcher.start();
+                    int nextLecturePos = fileContent.indexOf("\n## ", lectureStart + 1);
 
-                // If we found a match, go to the end of that section
-                if (insertPosition < fileContent.length()) {
-                    int nextLecturePos = fileContent.indexOf("\n## ", insertPosition + 1);
                     if (nextLecturePos > -1) {
+                        // Insert before the next lecture
                         insertPosition = nextLecturePos;
+                        log.debug("Inserting lecture content before next lecture at position {}", insertPosition);
                     } else {
+                        // No next lecture - insert at end
                         insertPosition = fileContent.length();
+                        log.debug("Inserting lecture content at end of file");
                     }
+                } else {
+                    // Lecture not found - check if we should create a new one
+                    log.debug("Lecture title '{}' not found in content - inserting at end", node.getTitle());
                 }
                 break;
 
             case SECTION:
-                // Find the last section of the appropriate lecture
-                Pattern sectionPattern = Pattern.compile("^### ", Pattern.MULTILINE);
-                Matcher sectionMatcher = sectionPattern.matcher(fileContent);
+                // For sections, try to find the appropriate lecture first
+                if (node.getParent() != null && node.getParent().getTitle() != null) {
+                    String lectureTitle = node.getParent().getTitle();
+                    Pattern parentLecturePattern = Pattern.compile("^## " + Pattern.quote(lectureTitle), Pattern.MULTILINE);
+                    Matcher parentLectureMatcher = parentLecturePattern.matcher(fileContent);
 
-                while (sectionMatcher.find()) {
-                    insertPosition = sectionMatcher.start();
-                }
+                    if (parentLectureMatcher.find()) {
+                        // Found the parent lecture
+                        int lectureStart = parentLectureMatcher.start();
+                        int lectureEnd = fileContent.length();
 
-                // If we found a match, go to the end of that section
-                if (insertPosition < fileContent.length()) {
-                    int nextSectionPos = fileContent.indexOf("\n### ", insertPosition + 1);
-                    if (nextSectionPos > -1) {
-                        insertPosition = nextSectionPos;
+                        // Find end of this lecture (next lecture or EOF)
+                        int nextLecturePos = fileContent.indexOf("\n## ", lectureStart + 1);
+                        if (nextLecturePos > -1) {
+                            lectureEnd = nextLecturePos;
+                        }
+
+                        // Find insertion point within this lecture - after the last section
+                        String lectureContent = fileContent.substring(lectureStart, lectureEnd);
+                        Pattern sectionPattern = Pattern.compile("^### ([^\\n]+)", Pattern.MULTILINE);
+                        Matcher sectionMatcher = sectionPattern.matcher(lectureContent);
+
+                        int lastSectionPos = -1;
+                        while (sectionMatcher.find()) {
+                            lastSectionPos = lectureStart + sectionMatcher.start();
+
+                            // If we find the section with our title, use its position
+                            if (sectionMatcher.group(1).trim().equals(node.getTitle())) {
+                                // Find the end of this section
+                                int sectionStart = lastSectionPos;
+                                int sectionEnd = lectureEnd;
+
+                                // Look for the next section after this one
+                                int nextSectionPos = lectureContent.indexOf("\n### ", sectionMatcher.end());
+                                if (nextSectionPos > -1) {
+                                    sectionEnd = lectureStart + nextSectionPos;
+                                }
+
+                                insertPosition = sectionEnd;
+                                log.debug("Found existing section '{}' - inserting at end of section at position {}",
+                                        node.getTitle(), insertPosition);
+                                break;
+                            }
+                        }
+
+                        // If we didn't find our section but found others, insert after the last one
+                        if (lastSectionPos > -1 && !sectionMatcher.group(1).trim().equals(node.getTitle())) {
+                            // Find the next section or lecture
+                            int nextSectionPos = fileContent.indexOf("\n### ", lastSectionPos + 1);
+                            if (nextSectionPos > -1 && nextSectionPos < lectureEnd) {
+                                insertPosition = nextSectionPos;
+                            } else {
+                                insertPosition = lectureEnd;
+                            }
+                            log.debug("Inserting section after last section at position {}", insertPosition);
+                        } else if (lastSectionPos == -1) {
+                            // No sections found - insert after the lecture header
+                            insertPosition = lectureStart + lectureContent.indexOf("\n") + 1;
+                            log.debug("No sections found - inserting after lecture header at position {}", insertPosition);
+                        }
                     } else {
-                        insertPosition = fileContent.length();
+                        log.debug("Parent lecture '{}' not found - inserting section at end", lectureTitle);
                     }
                 }
                 break;
 
             case TOPIC:
-                // Insert after the last topic
-                Pattern topicPattern = Pattern.compile("^#### ", Pattern.MULTILINE);
-                Matcher topicMatcher = topicPattern.matcher(fileContent);
+                // Similar to section but search for the parent section
+                if (node.getParent() != null && node.getParent().getTitle() != null) {
+                    String sectionTitle = node.getParent().getTitle();
+                    Pattern parentSectionPattern = Pattern.compile("^### " + Pattern.quote(sectionTitle), Pattern.MULTILINE);
+                    Matcher parentSectionMatcher = parentSectionPattern.matcher(fileContent);
 
-                while (topicMatcher.find()) {
-                    insertPosition = topicMatcher.start();
-                }
+                    if (parentSectionMatcher.find()) {
+                        // Found the parent section
+                        int sectionStart = parentSectionMatcher.start();
+                        int sectionEnd = fileContent.length();
 
-                // If we found a match, go to the end of that topic
-                if (insertPosition < fileContent.length()) {
-                    int nextTopicPos = fileContent.indexOf("\n#### ", insertPosition + 1);
-                    if (nextTopicPos > -1) {
-                        insertPosition = nextTopicPos;
+                        // Find end of this section (next section or EOF)
+                        int nextSectionPos = fileContent.indexOf("\n### ", sectionStart + 1);
+                        if (nextSectionPos > -1) {
+                            sectionEnd = nextSectionPos;
+                        }
+
+                        // Look for existing topics in this section
+                        String sectionContent = fileContent.substring(sectionStart, sectionEnd);
+                        Pattern topicPattern = Pattern.compile("^#### ([^\\n]+)", Pattern.MULTILINE);
+                        Matcher topicMatcher = topicPattern.matcher(sectionContent);
+
+                        int lastTopicPos = -1;
+                        while (topicMatcher.find()) {
+                            lastTopicPos = sectionStart + topicMatcher.start();
+
+                            // If we find our topic, use its position
+                            if (topicMatcher.group(1).trim().equals(node.getTitle())) {
+                                // Find the end of this topic
+                                int topicStart = lastTopicPos;
+                                int topicEnd = sectionEnd;
+
+                                // Look for next topic
+                                int nextTopicPos = sectionContent.indexOf("\n#### ", topicMatcher.end());
+                                if (nextTopicPos > -1) {
+                                    topicEnd = sectionStart + nextTopicPos;
+                                }
+
+                                insertPosition = topicEnd;
+                                log.debug("Found existing topic '{}' - inserting at end of topic at position {}",
+                                        node.getTitle(), insertPosition);
+                                break;
+                            }
+                        }
+
+                        // If we didn't find our topic but found others, insert after the last one
+                        if (lastTopicPos > -1 && !topicMatcher.group(1).trim().equals(node.getTitle())) {
+                            // Find the next topic or section
+                            int nextTopicPos = fileContent.indexOf("\n#### ", lastTopicPos + 1);
+                            if (nextTopicPos > -1 && nextTopicPos < sectionEnd) {
+                                insertPosition = nextTopicPos;
+                            } else {
+                                insertPosition = sectionEnd;
+                            }
+                            log.debug("Inserting topic after last topic at position {}", insertPosition);
+                        } else if (lastTopicPos == -1) {
+                            // No topics found - insert after the section header
+                            insertPosition = sectionStart + sectionContent.indexOf("\n") + 1;
+                            log.debug("No topics found - inserting after section header at position {}", insertPosition);
+                        }
                     } else {
-                        insertPosition = fileContent.length();
+                        log.debug("Parent section '{}' not found - inserting topic at end", sectionTitle);
                     }
                 }
                 break;
 
             case SLIDE:
-                // Find the appropriate section to add this slide to
-                // For simplicity, we'll just add to the end of the file
-                // In a real implementation, you would find the right section
+                // Handle slides - similar pattern but finding the right topic context is crucial
+                if (node.getParent() != null && node.getParent().getTitle() != null) {
+                    // First, try to find the parent topic
+                    String topicTitle = node.getParent().getTitle();
+                    Pattern parentTopicPattern = Pattern.compile("^#### " + Pattern.quote(topicTitle), Pattern.MULTILINE);
+                    Matcher parentTopicMatcher = parentTopicPattern.matcher(fileContent);
+
+                    if (parentTopicMatcher.find()) {
+                        // Found the parent topic
+                        int topicStart = parentTopicMatcher.start();
+                        int topicEnd = fileContent.length();
+
+                        // Find end of this topic (next topic, section, or EOF)
+                        int nextTopicPos = fileContent.indexOf("\n#### ", topicStart + 1);
+                        int nextSectionPos = fileContent.indexOf("\n### ", topicStart + 1);
+
+                        if (nextTopicPos > -1 && (nextSectionPos == -1 || nextTopicPos < nextSectionPos)) {
+                            topicEnd = nextTopicPos;
+                        } else if (nextSectionPos > -1) {
+                            topicEnd = nextSectionPos;
+                        }
+
+                        // Look for slides in this topic
+                        String topicContent = fileContent.substring(topicStart, topicEnd);
+
+                        // For slides, we use the seq tag pattern
+                        Pattern slidePattern = Pattern.compile("^##### \\[seq:(\\d+)\\] ([^\\n]+)", Pattern.MULTILINE);
+                        Matcher slideMatcher = slidePattern.matcher(topicContent);
+
+                        // Try to insert based on sequence number
+                        int slideSeq = node.getDisplayOrder() != null ? node.getDisplayOrder() : 999;
+                        int prevSlidePos = -1;
+                        int prevSlideSeq = -1;
+
+                        // Scan all slides to find the right insertion point based on sequence
+                        boolean foundExactSlide = false;
+                        while (slideMatcher.find()) {
+                            String seqStr = slideMatcher.group(1).trim();
+                            String slideTitle = slideMatcher.group(2).trim();
+                            int currentSeq = Integer.parseInt(seqStr);
+
+                            if (slideTitle.equals(node.getTitle())) {
+                                // Found the exact slide we're updating
+                                int slideStart = topicStart + slideMatcher.start();
+                                int slideEnd = topicEnd;
+
+                                // Find end of this slide
+                                int nextSlidePos = topicContent.indexOf("\n##### [seq:", slideMatcher.end());
+                                if (nextSlidePos > -1) {
+                                    slideEnd = topicStart + nextSlidePos;
+                                }
+
+                                insertPosition = slideEnd;
+                                foundExactSlide = true;
+                                log.debug("Found existing slide '{}' with seq {} - updating at position {}",
+                                        node.getTitle(), slideSeq, insertPosition);
+                                break;
+                            }
+
+                            // Track previous slide for sequence-based insertion
+                            if (currentSeq < slideSeq) {
+                                prevSlidePos = topicStart + slideMatcher.start();
+                                prevSlideSeq = currentSeq;
+                            } else if (currentSeq > slideSeq && !foundExactSlide) {
+                                // Found a slide with a higher sequence - insert before it
+                                insertPosition = topicStart + slideMatcher.start();
+                                log.debug("Inserting slide with seq {} before slide with seq {}",
+                                        slideSeq, currentSeq);
+                                break;
+                            }
+                        }
+
+                        // If we didn't find the right spot by sequence, insert after the last slide with lower seq
+                        if (prevSlidePos > -1 && !foundExactSlide && insertPosition == fileContent.length()) {
+                            // Find where this slide ends
+                            int nextSlidePos = fileContent.indexOf("\n##### [seq:", prevSlidePos + 1);
+                            if (nextSlidePos > -1 && nextSlidePos < topicEnd) {
+                                insertPosition = nextSlidePos;
+                            } else {
+                                insertPosition = topicEnd;
+                            }
+                            log.debug("Inserting slide with seq {} after slide with seq {}",
+                                    slideSeq, prevSlideSeq);
+                        } else if (prevSlidePos == -1 && !foundExactSlide && insertPosition == fileContent.length()) {
+                            // No slides found with lower seq - insert at beginning of topic
+                            insertPosition = topicStart + topicContent.indexOf("\n") + 1;
+                            log.debug("No slides with lower seq found - inserting at topic start");
+                        }
+                    } else {
+                        log.debug("Parent topic '{}' not found - inserting slide at end", topicTitle);
+                    }
+                }
                 break;
         }
 
-        // Insert the content at the determined position
+        // Insert the content at the determined position with proper spacing
+        log.info("Final insertion position for node '{}': {}", node.getTitle(), insertPosition);
+
+        // Insert in the file with proper spacing
         if (insertPosition == fileContent.length()) {
             // Ensure we have line breaks before adding content
             if (!fileContent.endsWith("\n\n")) {
@@ -281,7 +478,6 @@ public class GitContentSyncService {
                     nodeContent + fileContent.substring(insertPosition);
         }
     }
-
     /**
      * Get the latest content for a node from its versions
      */

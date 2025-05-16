@@ -53,8 +53,8 @@ public class EnhancedUpdaterService {
                         node = createNewNode(proposal);
                         updatedNodes.add(node);
 
-                        // Sync the node to the Git repository
-                        gitChanges |= gitContentSyncService.syncNodeToFile(node);
+                        // Sync the node to the Git repository - Pass the branch name here
+                        gitChanges |= gitContentSyncService.syncNodeToFile(node, branchName);
                         break;
 
                     case "UPDATE":
@@ -62,8 +62,8 @@ public class EnhancedUpdaterService {
                         if (node != null) {
                             updatedNodes.add(node);
 
-                            // Sync the node to the Git repository
-                            gitChanges |= gitContentSyncService.syncNodeToFile(node);
+                            // Sync the node to the Git repository - Pass the branch name here
+                            gitChanges |= gitContentSyncService.syncNodeToFile(node, branchName);
                         }
                         break;
 
