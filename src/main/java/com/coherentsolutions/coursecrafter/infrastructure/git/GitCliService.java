@@ -114,16 +114,24 @@ public class GitCliService {
                 return;
             }
 
-            // We have to run inside the repo root; easiest is to wrap the command in `sh -c "cd … && gh …"`
+            // Write the PR body to a temporary file to avoid shell interpretation issues
+            Path tempFile = Files.createTempFile("pr-description", ".md");
+            Files.writeString(tempFile, body);
+
+            // Create PR using the file for the body
             String cmd = String.format(
-                    "cd %s && /opt/homebrew/bin/gh pr create --title \"%s\" --body \"%s\" --base %s --head %s",
+                    "cd %s && /opt/homebrew/bin/gh pr create --title \"%s\" --body-file \"%s\" --base %s --head %s",
                     repoRoot,
                     title.replace("\"", "\\\""),
-                    body.replace("\"", "\\\""),
+                    tempFile.toAbsolutePath(),
                     defaultBranch,
                     branch
             );
+
             run("sh", "-c", cmd);
+
+            // Delete the temporary file
+            Files.deleteIfExists(tempFile);
         } catch (Exception e) {
             log.error("Failed to create PR: {}", e.getMessage());
             // Log but don't fail the entire operation

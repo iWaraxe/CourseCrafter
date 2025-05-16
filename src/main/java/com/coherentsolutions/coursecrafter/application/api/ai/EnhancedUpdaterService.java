@@ -169,11 +169,13 @@ public class EnhancedUpdaterService {
             sb.append("**Rationale:** ").append(proposal.rationale()).append("\n\n");
 
             if (!"DELETE".equals(proposal.action())) {
-                sb.append("<details>\n<summary>Content Preview</summary>\n\n```\n");
+                // Use HTML details tag to avoid shell interpretation issues
+                sb.append("<details>\n<summary>Content Preview</summary>\n\n");
                 String contentPreview = proposal.content().length() > 300
                         ? proposal.content().substring(0, 300) + "..."
                         : proposal.content();
-                sb.append(contentPreview).append("\n```\n</details>\n\n");
+                // Use HTML code blocks instead of markdown code blocks
+                sb.append("<pre>\n").append(contentPreview).append("\n</pre>\n</details>\n\n");
             }
         }
 
