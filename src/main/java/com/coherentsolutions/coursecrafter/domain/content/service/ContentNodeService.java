@@ -1,9 +1,7 @@
 package com.coherentsolutions.coursecrafter.domain.content.service;
 
 import com.coherentsolutions.coursecrafter.domain.content.model.ContentNode;
-import com.coherentsolutions.coursecrafter.domain.version.model.ContentVersion;
 import com.coherentsolutions.coursecrafter.domain.content.repository.ContentNodeRepository;
-import com.coherentsolutions.coursecrafter.domain.version.repository.ContentVersionRepository;
 import com.coherentsolutions.coursecrafter.infrastructure.git.GitCliService;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.extern.slf4j.Slf4j;

@@ -6,7 +6,6 @@ import com.coherentsolutions.coursecrafter.domain.content.service.ContentNodeSer
 import com.coherentsolutions.coursecrafter.domain.slide.model.SlideComponent;
 import com.coherentsolutions.coursecrafter.domain.slide.repository.SlideComponentRepository;
 import com.coherentsolutions.coursecrafter.domain.slide.service.SlideComponentService;
-import com.coherentsolutions.coursecrafter.domain.version.repository.ContentVersionRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,7 +19,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;

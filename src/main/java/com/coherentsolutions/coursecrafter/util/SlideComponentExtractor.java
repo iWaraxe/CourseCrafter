@@ -6,7 +6,6 @@ import com.coherentsolutions.coursecrafter.domain.content.repository.ContentNode
 import com.coherentsolutions.coursecrafter.domain.slide.model.SlideComponent;
 import com.coherentsolutions.coursecrafter.domain.slide.repository.SlideComponentRepository;
 import com.coherentsolutions.coursecrafter.domain.slide.service.SlideComponentService;
-import com.coherentsolutions.coursecrafter.domain.version.model.ContentVersion;
 
 // Import for @Transactional - Spring's annotation is generally preferred
 import org.springframework.transaction.annotation.Transactional;

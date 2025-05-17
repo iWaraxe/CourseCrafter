@@ -2,18 +2,14 @@ package com.coherentsolutions.coursecrafter.domain.content.service;
 
 import com.coherentsolutions.coursecrafter.domain.slide.model.SlideComponent;
 import com.coherentsolutions.coursecrafter.domain.slide.repository.SlideComponentRepository;
-import com.coherentsolutions.coursecrafter.domain.slide.service.SlideService;
 import com.coherentsolutions.coursecrafter.presentation.dto.content.ContentNodeDto;
 import com.coherentsolutions.coursecrafter.presentation.dto.content.ContentTreeDto;
 import com.coherentsolutions.coursecrafter.domain.content.model.ContentNode;
-import com.coherentsolutions.coursecrafter.domain.version.model.ContentVersion;
 import com.coherentsolutions.coursecrafter.domain.content.repository.ContentNodeRepository;
-import com.coherentsolutions.coursecrafter.domain.version.repository.ContentVersionRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
