@@ -5,9 +5,11 @@ import com.coherentsolutions.coursecrafter.domain.slide.model.SlideComponent;
 import com.coherentsolutions.coursecrafter.domain.content.repository.ContentNodeRepository;
 import com.coherentsolutions.coursecrafter.domain.slide.repository.SlideComponentRepository;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j; // <<<< ADD SLF4J FOR LOGGING
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -15,11 +17,16 @@ import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
-@Slf4j // <<<< ADD SLF4J FOR LOGGING
+@Slf4j
 public class SlideComponentService {
 
     private final SlideComponentRepository componentRepository;
     private final ContentNodeRepository nodeRepository;
+    private final JdbcTemplate jdbcTemplate; // <<<< INJECT JdbcTemplate
+
+    // Optional: If you want to try the re-fetch strategy for debugging createComponent
+    // @PersistenceContext
+    // private EntityManager entityManager;
 
     public List<SlideComponent> getComponentsForSlide(Long slideId) {
         return componentRepository.findBySlideNodeIdOrderByDisplayOrder(slideId);
@@ -39,7 +46,6 @@ public class SlideComponentService {
                 .max(Integer::compareTo)
                 .orElse(0);
 
-        // CRITICAL LOGGING POINT 1: What content string is the service receiving?
         String receivedContentPreview = (content != null) ? content.substring(0, Math.min(content.length(), 100)).replace("\n", "\\n") : "null";
         int receivedContentLength = (content != null) ? content.length() : 0;
         log.info("SERVICE.createComponent RECEIVED: slideId={}, type={}, contentLength={}, contentPreview='{}'",
@@ -48,13 +54,12 @@ public class SlideComponentService {
         SlideComponent componentToSave = SlideComponent.builder()
                 .slideNode(slideNode)
                 .componentType(type)
-                .content(content) // This is where the string from the parser is assigned
+                .content(content)
                 .displayOrder(maxOrder + 10)
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
                 .build();
 
-        // CRITICAL LOGGING POINT 2: What is in the entity JUST BEFORE save?
         String beforeSavePreview = (componentToSave.getContent() != null) ? componentToSave.getContent().substring(0, Math.min(componentToSave.getContent().length(), 100)).replace("\n", "\\n") : "null";
         int beforeSaveLength = (componentToSave.getContent() != null) ? componentToSave.getContent().length() : 0;
         log.info("SERVICE.createComponent BEFORE SAVE: entityContentLength={}, entityContentPreview='{}'",
@@ -62,14 +67,12 @@ public class SlideComponentService {
 
         SlideComponent savedComponent = null;
         try {
-            savedComponent = componentRepository.save(componentToSave);
+            savedComponent = componentRepository.saveAndFlush(componentToSave); // Using saveAndFlush for immediate DB interaction
         } catch (Exception e) {
             log.error("SERVICE.createComponent ERROR during save for slideId={}, type={}: {}", slideId, type, e.getMessage(), e);
-            throw e; // Re-throw to see if transaction rolls back
+            throw e;
         }
 
-
-        // CRITICAL LOGGING POINT 3: What is in the entity JUST AFTER save?
         String afterSavePreview = "null";
         int afterSaveLength = 0;
         if (savedComponent != null && savedComponent.getContent() != null) {
@@ -85,7 +88,6 @@ public class SlideComponentService {
 
     @Transactional
     public Optional<SlideComponent> updateComponent(Long componentId, String newContent) {
-        // ... (existing code)
         return componentRepository.findById(componentId)
                 .map(component -> {
                     component.setContent(newContent);
@@ -96,7 +98,6 @@ public class SlideComponentService {
 
     @Transactional
     public boolean deleteComponent(Long componentId) {
-        // ... (existing code)
         if (componentRepository.existsById(componentId)) {
             componentRepository.deleteById(componentId);
             return true;
@@ -104,14 +105,24 @@ public class SlideComponentService {
         return false;
     }
 
+    /**
+     * Convenience method to get or create a component of a specific type.
+     * If the component exists, it's returned. Otherwise, a new one is created
+     * with the provided defaultContent.
+     */
     @Transactional
     public SlideComponent getOrCreateComponent(Long slideId, SlideComponent.ComponentType type, String defaultContent) {
-        // ... (existing code)
+        log.debug("SERVICE.getOrCreateComponent CALLED for slideId: {}, type: {}, defaultContentPreview: '{}'",
+                slideId, type, (defaultContent != null ? defaultContent.substring(0, Math.min(defaultContent.length(), 50)).replace("\n", "\\n") : "null"));
+
         Optional<SlideComponent> existing = componentRepository.findBySlideIdAndType(slideId, type);
 
         if (existing.isPresent()) {
+            log.debug("SERVICE.getOrCreateComponent: Found existing component ID: {}", existing.get().getId());
             return existing.get();
         } else {
+            log.debug("SERVICE.getOrCreateComponent: No existing component found. Creating new one for slideId: {}, type: {}", slideId, type);
+            // When creating, it passes `defaultContent` to `createComponent`
             return createComponent(slideId, type, defaultContent);
         }
     }

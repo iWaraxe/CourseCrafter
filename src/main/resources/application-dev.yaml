@@ -10,4 +10,12 @@ coursecrafter:
 
 logging:
   level:
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql: TRACE # This shows bound parameters
     com.coherentsolutions.coursecrafter.util: DEBUG
+    com.coherentsolutions.coursecrafter.domain.slide.service.SlideComponentService: INFO
+
+spring:
+  jpa:
+    properties:
+      hibernate.jdbc.lob.non_contextual_creation: true

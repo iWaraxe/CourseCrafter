@@ -141,13 +141,6 @@ public class ContentTagExtractor implements CommandLineRunner {
         // Get content from latest version
         String nodeContent = "";
 
-        if (node.getVersions() != null && !node.getVersions().isEmpty()) {
-            nodeContent = node.getVersions().stream()
-                    .max((v1, v2) -> v1.getVersionNumber().compareTo(v2.getVersionNumber()))
-                    .map(version -> version.getContent())
-                    .orElse("");
-        }
-
         // Also include title and description
         String allContent = node.getTitle() + " " +
                 (node.getDescription() != null ? node.getDescription() : "") + " " +

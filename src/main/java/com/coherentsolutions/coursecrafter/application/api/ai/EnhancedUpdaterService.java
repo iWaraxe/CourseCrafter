@@ -26,7 +26,6 @@ import java.util.Optional;
 public class EnhancedUpdaterService {
 
     private final ContentNodeRepository nodeRepository;
-    private final ContentVersionRepository versionRepository;
     private final ContentNodeService nodeService;
     private final GitCliService gitService;
     private final GitContentSyncService gitContentSyncService;

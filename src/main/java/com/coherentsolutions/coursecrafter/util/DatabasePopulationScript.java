@@ -6,6 +6,7 @@ import com.coherentsolutions.coursecrafter.domain.content.service.ContentNodeSer
 import com.coherentsolutions.coursecrafter.domain.slide.model.SlideComponent;
 import com.coherentsolutions.coursecrafter.domain.slide.repository.SlideComponentRepository;
 import com.coherentsolutions.coursecrafter.domain.slide.service.SlideComponentService;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -34,7 +35,6 @@ import java.util.regex.Pattern;
 public class DatabasePopulationScript implements CommandLineRunner {
 
     private final ContentNodeRepository contentNodeRepository;
-    private final ContentVersionRepository contentVersionRepository;
     private final SlideComponentRepository slideComponentRepository;
     private final ContentNodeService contentNodeService;
     private final SlideComponentService slideComponentService;
@@ -60,6 +60,7 @@ public class DatabasePopulationScript implements CommandLineRunner {
     private static final Pattern FIRST_SECTION_PATTERN = Pattern.compile("### 1\\.");
 
     @Override
+    @Transactional
     public void run(String... args) throws Exception {
         if (databaseImportEnabled != null && !databaseImportEnabled) {
             log.info("Database import is disabled. Skipping population script.");

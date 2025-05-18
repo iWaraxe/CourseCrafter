@@ -20,21 +20,16 @@ import java.util.stream.Collectors;
 public class ContentHierarchyService {
 
     private final ContentNodeRepository nodeRepository;
-    private final ContentVersionRepository versionRepository;
     private final SlideComponentRepository slideComponentRepository;
 
     /**
      * Generates a complete hierarchical tree of content
      */
     public ContentTreeDto getContentTree() {
-        // Get all root nodes (courses)
         List<ContentNode> rootNodes = nodeRepository.findByParentIsNullOrderByDisplayOrder();
-
-        // Convert to DTOs with full hierarchy
         List<ContentNodeDto> rootDtos = rootNodes.stream()
-                .map(node -> convertToDto(node, true))
+                .map(node -> convertToDto(node, true)) // convertToDto will now use node.getMarkdownContent() if needed
                 .collect(Collectors.toList());
-
         return new ContentTreeDto(rootDtos);
     }
 
@@ -43,13 +38,19 @@ public class ContentHierarchyService {
      */
     public String generateOutline() {
         List<ContentNode> allNodes = nodeRepository.findAll();
+        // Sorting by path is fine
+        allNodes.sort((a, b) -> {
+            if (a.getPath() == null && b.getPath() == null) return 0;
+            if (a.getPath() == null) return -1;
+            if (b.getPath() == null) return 1;
+            return a.getPath().compareTo(b.getPath());
+        });
 
         return allNodes.stream()
-                .sorted((a, b) -> a.getPath().compareTo(b.getPath()))
                 .map(node -> {
                     int depth = calculateDepth(node.getPath());
                     String indent = "  ".repeat(depth);
-                    return indent + "- " + node.getNodeNumber() + " " + node.getTitle();
+                    return indent + "- " + (node.getNodeNumber() != null ? node.getNodeNumber() : "") + " " + node.getTitle();
                 })
                 .collect(Collectors.joining("\n"));
     }
@@ -60,16 +61,6 @@ public class ContentHierarchyService {
     public String generateLlmOutlineContext() {
         // Get all content nodes
         List<ContentNode> allNodes = nodeRepository.findAll();
-
-        // Get latest content for each node
-        Map<Long, String> latestContents = versionRepository.findAll().stream()
-                .collect(Collectors.groupingBy(
-                        v -> v.getNode().getId(),
-                        Collectors.collectingAndThen(
-                                Collectors.maxBy((v1, v2) -> v1.getVersionNumber().compareTo(v2.getVersionNumber())),
-                                optVersion -> optVersion.map(ContentVersion::getContent).orElse("")
-                        )
-                ));
 
         StringBuilder builder = new StringBuilder();
 
@@ -91,12 +82,6 @@ public class ContentHierarchyService {
             } else if (node.getNodeType() == ContentNode.NodeType.SLIDE) {
                 builder.append("##### Slide ").append(node.getNodeNumber()).append(" ")
                         .append(node.getTitle()).append("\n\n");
-
-                // For slides, include the content
-                String content = latestContents.get(node.getId());
-                if (content != null && !content.isBlank()) {
-                    builder.append("```markdown\n").append(content).append("\n```\n\n");
-                }
             }
         }
 
@@ -109,17 +94,6 @@ public class ContentHierarchyService {
     public String generateLlmOutlineContextForCourse(String courseName) {
         // Get all content nodes related to this course
         List<ContentNode> courseNodes = nodeRepository.findByPathPattern(courseName + "/%");
-
-        // Get latest content for each node
-        Map<Long, String> latestContents = versionRepository.findAll().stream()
-                .filter(v -> courseNodes.stream().anyMatch(n -> n.getId().equals(v.getNode().getId())))
-                .collect(Collectors.groupingBy(
-                        v -> v.getNode().getId(),
-                        Collectors.collectingAndThen(
-                                Collectors.maxBy((v1, v2) -> v1.getVersionNumber().compareTo(v2.getVersionNumber())),
-                                optVersion -> optVersion.map(ContentVersion::getContent).orElse("")
-                        )
-                ));
 
         StringBuilder builder = new StringBuilder();
         builder.append("# Course: ").append(courseName).append("\n\n");
@@ -297,7 +271,9 @@ public class ContentHierarchyService {
                 node.getTitle(),
                 node.getDescription(),
                 node.getNodeNumber(),
-                node.getPath()
+                node.getPath(),
+                // Pass new ArrayList to constructor that takes children
+                new java.util.ArrayList<>()
         );
 
         if (includeChildren) {
@@ -305,9 +281,10 @@ public class ContentHierarchyService {
             List<ContentNodeDto> childDtos = children.stream()
                     .map(child -> convertToDto(child, true))
                     .collect(Collectors.toList());
-            dto.setChildren(childDtos);
+            dto.setChildren(childDtos); // Use the setter
         }
-
+        // If ContentNodeDto needs markdownContent, add it here:
+        // dto.setMarkdownContent(node.getMarkdownContent());
         return dto;
     }
 

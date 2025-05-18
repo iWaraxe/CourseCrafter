@@ -70,18 +70,15 @@ public class SlideComponentExtractor implements CommandLineRunner {
         List<ContentNode> allSlideNodes = contentNodeRepository.findByNodeType(ContentNode.NodeType.SLIDE);
         log.info("SlideComponentExtractor: Found {} slide nodes to process for components.", allSlideNodes.size());
 
-        for (ContentNode currentSlideNode : allSlideNodes) { // Renamed 'slide' to 'currentSlideNode' for clarity
-            // Get the latest version's content, which MarkdownCourseParser should have stored.
-            Optional<String> latestVersionContentOpt = currentSlideNode.getVersions().stream()
-                    .max((v1, v2) -> v1.getVersionNumber().compareTo(v2.getVersionNumber()))
-                    .map(ContentVersion::getContent);
+        for (ContentNode currentSlideNode : allSlideNodes) {
+            // Get content directly from the ContentNode
+            String fullSlideMarkdown = currentSlideNode.getMarkdownContent();
 
-            if (latestVersionContentOpt.isEmpty()) {
-                log.warn("SlideComponentExtractor: Slide '{}' (ID: {}) has no versions or content in version. Cannot extract components.", currentSlideNode.getTitle(), currentSlideNode.getId());
+            if (fullSlideMarkdown == null || fullSlideMarkdown.isEmpty()) { // Check for null or empty
+                log.warn("SlideComponentExtractor: Slide '{}' (ID: {}) has no markdownContent. Cannot extract components.", currentSlideNode.getTitle(), currentSlideNode.getId());
                 continue;
             }
 
-            String fullSlideMarkdown = latestVersionContentOpt.get();
             log.debug("SlideComponentExtractor: Processing slide '{}' (ID: {}) for components. Full Markdown length: {}",
                     currentSlideNode.getTitle(), currentSlideNode.getId(), fullSlideMarkdown.length());
 
