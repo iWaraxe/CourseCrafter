@@ -9,6 +9,7 @@ import com.coherentsolutions.coursecrafter.domain.content.repository.ContentNode
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Map;
@@ -25,6 +26,7 @@ public class ContentHierarchyService {
     /**
      * Generates a complete hierarchical tree of content
      */
+    @Transactional(readOnly = true)
     public ContentTreeDto getContentTree() {
         List<ContentNode> rootNodes = nodeRepository.findByParentIsNullOrderByDisplayOrder();
         List<ContentNodeDto> rootDtos = rootNodes.stream()
@@ -36,6 +38,7 @@ public class ContentHierarchyService {
     /**
      * Generates a flat outline of all content
      */
+    @Transactional(readOnly = true)
     public String generateOutline() {
         List<ContentNode> allNodes = nodeRepository.findAll();
         // Sorting by path is fine
@@ -58,6 +61,7 @@ public class ContentHierarchyService {
     /**
      * Generates a text-based outline for LLM context building
      */
+    @Transactional(readOnly = true)
     public String generateLlmOutlineContext() {
         // Get all content nodes
         List<ContentNode> allNodes = nodeRepository.findAll();
@@ -91,6 +95,7 @@ public class ContentHierarchyService {
     /**
      * Generates a text-based outline for a specific course
      */
+    @Transactional(readOnly = true)
     public String generateLlmOutlineContextForCourse(String courseName) {
         // Get all content nodes related to this course
         List<ContentNode> courseNodes = nodeRepository.findByPathPattern(courseName + "/%");
@@ -194,6 +199,7 @@ public class ContentHierarchyService {
     /**
      * Generates a detailed text-based outline with slide components
      */
+    @Transactional(readOnly = true)
     public String generateDetailedOutlineContext(String courseName) {
         // Build a hierarchical representation
         StringBuilder builder = new StringBuilder();
@@ -264,6 +270,7 @@ public class ContentHierarchyService {
         return builder.toString();
     }
 
+    @Transactional(readOnly = true)
     private ContentNodeDto convertToDto(ContentNode node, boolean includeChildren) {
         ContentNodeDto dto = new ContentNodeDto(
                 node.getId(),
