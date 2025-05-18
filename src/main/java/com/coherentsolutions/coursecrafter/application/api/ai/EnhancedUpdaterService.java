@@ -6,7 +6,6 @@ import com.coherentsolutions.coursecrafter.infrastructure.git.GitContentSyncServ
 import com.coherentsolutions.coursecrafter.presentation.dto.ai.AiProposalDto;
 import com.coherentsolutions.coursecrafter.domain.content.model.ContentNode;
 import com.coherentsolutions.coursecrafter.domain.content.repository.ContentNodeRepository;
-import com.coherentsolutions.coursecrafter.domain.version.repository.ContentVersionRepository;
 import com.coherentsolutions.coursecrafter.domain.content.service.ContentNodeService;
 import com.coherentsolutions.coursecrafter.infrastructure.git.GitCliService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -27,7 +26,6 @@ import java.util.Optional;
 public class EnhancedUpdaterService {
 
     private final ContentNodeRepository nodeRepository;
-    private final ContentVersionRepository versionRepository;
     private final ContentNodeService nodeService;
     private final GitCliService gitService;
     private final GitContentSyncService gitContentSyncService;

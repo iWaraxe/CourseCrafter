@@ -4,8 +4,9 @@ import com.coherentsolutions.coursecrafter.domain.content.model.ContentNode;
 import com.coherentsolutions.coursecrafter.domain.content.repository.ContentNodeRepository;
 import com.coherentsolutions.coursecrafter.domain.content.service.ContentNodeService;
 import com.coherentsolutions.coursecrafter.domain.slide.model.SlideComponent;
+import com.coherentsolutions.coursecrafter.domain.slide.repository.SlideComponentRepository;
 import com.coherentsolutions.coursecrafter.domain.slide.service.SlideComponentService;
-import com.coherentsolutions.coursecrafter.domain.version.repository.ContentVersionRepository;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,7 +20,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -35,7 +35,7 @@ import java.util.regex.Pattern;
 public class DatabasePopulationScript implements CommandLineRunner {
 
     private final ContentNodeRepository contentNodeRepository;
-    private final ContentVersionRepository contentVersionRepository;
+    private final SlideComponentRepository slideComponentRepository;
     private final ContentNodeService contentNodeService;
     private final SlideComponentService slideComponentService;
 
@@ -60,8 +60,8 @@ public class DatabasePopulationScript implements CommandLineRunner {
     private static final Pattern FIRST_SECTION_PATTERN = Pattern.compile("### 1\\.");
 
     @Override
+    @Transactional
     public void run(String... args) throws Exception {
-        // Skip if import is disabled
         if (databaseImportEnabled != null && !databaseImportEnabled) {
             log.info("Database import is disabled. Skipping population script.");
             return;
@@ -69,20 +69,20 @@ public class DatabasePopulationScript implements CommandLineRunner {
 
         log.info("Starting to populate database with course content from markdown files...");
 
-        // Process each markdown file
         Path dirPath = Paths.get(markdownFilesDir);
-
-        // Check if directory exists
         if (!Files.exists(dirPath)) {
             log.error("Markdown files directory does not exist: {}", markdownFilesDir);
             return;
         }
 
-        // Create the parser
+        // Create the parser, now passing the new dependency
         MarkdownCourseParser parser = new MarkdownCourseParser(
-                contentNodeRepository, contentNodeService, slideComponentService);
+                contentNodeRepository,
+                contentNodeService,
+                slideComponentService,
+                slideComponentRepository // <<<< PASS THE INJECTED REPOSITORY HERE
+        );
 
-        // Process each .md file in the directory
         Files.list(dirPath)
                 .filter(path -> path.toString().endsWith(".md"))
                 .forEach(path -> {
@@ -94,40 +94,6 @@ public class DatabasePopulationScript implements CommandLineRunner {
                 });
 
         log.info("Database population completed.");
-    }
-
-    private void populateDatabaseFromMarkdownFiles() throws IOException {
-        // Create the root course node
-        final ContentNode courseNode = ContentNode.builder()
-                .nodeType(ContentNode.NodeType.COURSE)
-                .title("AI Course")
-                .description("A comprehensive course on AI tools and techniques")
-                .nodeNumber("1")
-                .displayOrder(1)
-                .path("Course/AI")
-                .createdAt(LocalDateTime.now())
-                .updatedAt(LocalDateTime.now())
-                .build();
-
-        final ContentNode savedCourseNode = contentNodeRepository.save(courseNode);
-        log.info("Created course root node: {}", savedCourseNode.getTitle());
-
-        // Map to store all lecture nodes for reference when creating sections
-        final Map<String, ContentNode> lectureNodes = new HashMap<>();
-
-        // Process each markdown file
-        Path dirPath = Paths.get(markdownFilesDir);
-
-        // Check if directory exists
-        if (!Files.exists(dirPath)) {
-            log.error("Markdown files directory does not exist: {}", markdownFilesDir);
-            return;
-        }
-
-        // Process files - using a non-lambda approach to avoid "effectively final" issues
-        Files.list(dirPath)
-                .filter(path -> path.toString().endsWith(".md"))
-                .forEach(path -> processMarkdownFileWrapper(path, savedCourseNode, lectureNodes));
     }
 
     // Wrapper method to handle exceptions and make lambda usage cleaner

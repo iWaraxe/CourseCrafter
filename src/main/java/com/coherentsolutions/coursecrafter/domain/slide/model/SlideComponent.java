@@ -27,7 +27,7 @@ public class SlideComponent {
     private ComponentType componentType;
 
     @Lob
-    @Column(columnDefinition = "text")
+    @Column(columnDefinition = "text") // This is good for schema generation
     private String content;
 
     private Integer displayOrder;

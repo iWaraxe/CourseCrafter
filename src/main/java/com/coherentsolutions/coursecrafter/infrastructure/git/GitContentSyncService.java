@@ -337,19 +337,4 @@ public class GitContentSyncService {
                 return fileContent + nodeContent;
         }
     }
-    /**
-     * Get the latest content for a node from its versions
-     */
-    private String getLatestNodeContent(ContentNode node) {
-        if (node.getVersions() == null || node.getVersions().isEmpty()) {
-            return "";
-        }
-
-        return node.getVersions().stream()
-                .max(Comparator.comparing(v -> v.getVersionNumber()))
-                .map(v -> v.getContent())
-                .orElse("");
-    }
-
-
 }

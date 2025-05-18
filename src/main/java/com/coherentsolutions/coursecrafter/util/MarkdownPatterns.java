@@ -34,18 +34,33 @@ public final class MarkdownPatterns {
     );
 
     /**
-     * COMPONENT_PATTERN:
+     * COMPONENT_PATTERN: (Revised based on your suggestion)
      * Group 1: Component type (SCRIPT, VISUAL, NOTES, DEMONSTRATION)
-     * Group 2: Component content (everything AFTER the H6 line, until next H6 or end of slide body)
+     * Group 2: Component content (everything AFTER the H6 line and its immediate newline,
+     *          until the next H6 or end of slide body)
      * This pattern operates on the slide body content (Group 3 from SLIDE_PATTERN).
      */
     public static final Pattern COMPONENT_PATTERN = Pattern.compile(
-            // Start of line (within slide body), H6, space, type
-            "^######\\s+(SCRIPT|VISUAL|NOTES|DEMONSTRATION)\\s*$" + // Group 1 (type). Ensures type is the only thing on H6 line.
-                    // Content block (Group 2): Optional, starts on a new line.
-                    "(?:\\r?\\n(.*?))?" + // Non-capturing group for newline and content. Group 2 is (.*?).
-                    // Positive lookahead for terminators.
+            // Start of line (within slide body), H6, space, type, end of line
+            "^######\\s+(SCRIPT|VISUAL|NOTES|DEMONSTRATION)\\s*$" + // Group 1 (type)
+                    // Content block (Group 2):
+                    // Matches the newline after the header, then captures all subsequent characters (non-greedily)
+                    // until the lookahead condition is met.
+                    "(?:\\r?\\n|\\r)?(.*?)" + // Group 2 (content with optional leading newline consumed by non-capturing group)
+                    // Positive lookahead for terminators: end of string OR next H6 component header.
                     "(?=\\Z|^######\\s+(?:SCRIPT|VISUAL|NOTES|DEMONSTRATION))",
+            Pattern.MULTILINE | Pattern.DOTALL
+    );
+
+    /**
+     * IMPROVED_COMPONENT_PATTERN:
+     * A more reliable pattern for extracting component content, especially for multiline content
+     * Group 1: Component type (SCRIPT, VISUAL, NOTES, DEMONSTRATION)
+     * Group 2: Newline character(s)
+     * Group 3: Component content (everything until the next component or end of input)
+     */
+    public static final Pattern IMPROVED_COMPONENT_PATTERN = Pattern.compile(
+            "^######\\s+(SCRIPT|VISUAL|NOTES|DEMONSTRATION)\\s*$(\\r?\\n|\\r)(.*?)(?=\\r?\\n######\\s+(?:SCRIPT|VISUAL|NOTES|DEMONSTRATION)|\\Z)",
             Pattern.MULTILINE | Pattern.DOTALL
     );
 

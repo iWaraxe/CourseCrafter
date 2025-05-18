@@ -7,6 +7,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
+import com.coherentsolutions.coursecrafter.domain.slide.model.SlideComponent;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -37,6 +38,11 @@ public class ContentNode {
 
     private String title;
     private String description;
+
+    @Lob
+    @Column(columnDefinition = "text")
+    private String markdownContent; // Stores the latest/current markdown for this node
+
     private Integer displayOrder;
     private String nodeNumber;  // 1.1.2, etc.
 
@@ -51,11 +57,8 @@ public class ContentNode {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
-    @OneToMany(mappedBy = "node", cascade = CascadeType.ALL)
-    private List<com.coherentsolutions.coursecrafter.domain.version.model.ContentVersion> versions;
-
     @OneToMany(mappedBy = "slideNode", cascade = CascadeType.ALL)
-    private List<com.coherentsolutions.coursecrafter.domain.slide.model.SlideComponent> slideComponents;
+    private List<SlideComponent> slideComponents;
 
     @ManyToMany
     @JoinTable(

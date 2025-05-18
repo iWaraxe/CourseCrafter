@@ -4,6 +4,7 @@ import com.coherentsolutions.coursecrafter.domain.content.model.ContentNode;
 import com.coherentsolutions.coursecrafter.domain.content.repository.ContentNodeRepository;
 import com.coherentsolutions.coursecrafter.domain.content.service.ContentNodeService;
 import com.coherentsolutions.coursecrafter.domain.slide.model.SlideComponent;
+import com.coherentsolutions.coursecrafter.domain.slide.repository.SlideComponentRepository;
 import com.coherentsolutions.coursecrafter.domain.slide.service.SlideComponentService;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -34,6 +35,7 @@ public class MarkdownCourseParser {
     private final ContentNodeRepository contentNodeRepository;
     private final ContentNodeService contentNodeService;
     private final SlideComponentService slideComponentService;
+    private final SlideComponentRepository slideComponentRepository;
 
     /**
      * Parse a markdown file and create the entire course hierarchy
@@ -387,25 +389,42 @@ public class MarkdownCourseParser {
         while (componentMatcher.find()) {
             componentCount++;
             String componentTypeStr = componentMatcher.group(1).trim().toUpperCase();
+
             String componentContent = componentMatcher.group(2) != null ? componentMatcher.group(2).trim() : "";
 
-            log.debug("Found component candidate: type='{}', content length={}", componentTypeStr, componentContent.length());
+            log.debug("Extractor: Found component type='{}', extracted content length={}. Preview: '{}'",
+                    componentTypeStr,
+                    componentContent.length(),
+                    componentContent.substring(0, Math.min(componentContent.length(), 50)).replace("\n", "\\n"));
 
             SlideComponent.ComponentType componentType;
             try {
                 componentType = SlideComponent.ComponentType.valueOf(componentTypeStr);
             } catch (IllegalArgumentException e) {
-                log.warn("Unknown component type: '{}' in slide: {}. Skipping component.", componentTypeStr, slideNode.getTitle());
+                log.warn("Unknown component type: '{}' in slide. Skipping component.", componentTypeStr);
                 continue;
             }
 
+            // Check if this specific component already exists (relevant for SlideComponentExtractor)
+            // For MarkdownCourseParser, this check might not be strictly needed if it's the first population.
+            if (slideComponentRepository != null) { // slideComponentRepository might be null if called from context without it
+                boolean componentExists = slideComponentRepository.findBySlideIdAndType(slideNode.getId(), componentType).isPresent();
+                if (componentExists) {
+                    log.debug("Component {} for slide '{}' already exists. Skipping creation by this parser/extractor.", componentType, slideNode.getTitle());
+                    continue;
+                }
+            }
+
             try {
+                // Pass the correctly extracted componentContent (the actual text)
                 slideComponentService.createComponent(slideNode.getId(), componentType, componentContent);
                 log.info("Created {} component for slide: {}", componentType, slideNode.getTitle());
             } catch (Exception e) {
-                log.error("Failed to create component {} for slide {}: {}", componentTypeStr, slideNode.getTitle(), e.getMessage(), e);
+                log.error("Failed to create component {} for slide {}: {}",
+                        componentTypeStr, slideNode.getTitle(), e.getMessage(), e);
             }
         }
+
         if (componentCount == 0) {
             log.debug("No H6 components found in slide '{}'. Slide body length: {}", slideNode.getTitle(), slideBodyContent.length());
             if (!slideBodyContent.trim().isEmpty() && !slideBodyContent.contains("######")) {

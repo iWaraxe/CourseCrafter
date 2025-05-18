@@ -1,9 +1,7 @@
 package com.coherentsolutions.coursecrafter.domain.content.service;
 
 import com.coherentsolutions.coursecrafter.domain.content.model.ContentNode;
-import com.coherentsolutions.coursecrafter.domain.version.model.ContentVersion;
 import com.coherentsolutions.coursecrafter.domain.content.repository.ContentNodeRepository;
-import com.coherentsolutions.coursecrafter.domain.version.repository.ContentVersionRepository;
 import com.coherentsolutions.coursecrafter.infrastructure.git.GitCliService;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.extern.slf4j.Slf4j;
@@ -24,7 +22,6 @@ import java.util.UUID;
 public class ContentNodeService {
 
     private final ContentNodeRepository nodeRepository;
-    private final ContentVersionRepository versionRepository;
     private final GitCliService gitService;
     private final ContentNodeRepository contentNodeRepository;
     private final JdbcTemplate jdbcTemplate;
@@ -47,82 +44,53 @@ public class ContentNodeService {
             node.setPath(node.getNodeType() + "/" + UUID.randomUUID().toString().substring(0, 8));
         }
 
+        node.setMarkdownContent(content); // Set content directly
+
+
         // Save the node first and flush to ensure it's committed
-        ContentNode savedNode = nodeRepository.saveAndFlush(node);
-
-        // Create initial version
-        if (content != null && !content.isBlank()) {
-            ContentVersion version = ContentVersion.builder()
-                    .node(savedNode)
-                    .content(content)
-                    .contentFormat("MARKDOWN")
-                    .versionNumber(1)
-                    .createdAt(LocalDateTime.now())
-                    .build();
-            versionRepository.saveAndFlush(version); // Use saveAndFlush
-        }
-
-        // Commit to Git
-        String branchName = "update-" + System.currentTimeMillis();
-        gitService.commitAndPush(branchName, commitMessage);
+        ContentNode savedNode = nodeRepository.saveAndFlush(node); // Save the node
 
         return savedNode;
     }
 
     @Transactional
     public ContentNode updateNode(Long nodeId, String newContent, String commitMessage) throws IOException, InterruptedException {
-        ContentNode node = nodeRepository.findById(nodeId).orElseThrow();
+        ContentNode node = nodeRepository.findById(nodeId)
+                .orElseThrow(() -> new EntityNotFoundException("ContentNode not found with id: " + nodeId));
+
+        node.setMarkdownContent(newContent); // Update content directly
         node.setUpdatedAt(LocalDateTime.now());
 
-        // Get current version number
-        int currentVersion = versionRepository.findLatestVersionByNodeId(nodeId)
-                .map(ContentVersion::getVersionNumber)
-                .orElse(0);
-
-        // Create new version
-        ContentVersion version = ContentVersion.builder()
-                .node(node)
-                .content(newContent)
-                .contentFormat("MARKDOWN")
-                .versionNumber(currentVersion + 1)
-                .createdAt(LocalDateTime.now())
-                .build();
-        versionRepository.save(version);
+        // Potentially update other fields like title, description if they are part of the update
+        // For example, if newContent contains a new title, you might parse it out and set node.setTitle()
 
         // Update node in repository
         ContentNode updatedNode = nodeRepository.save(node);
-
-        // Commit to Git
-        String branchName = "update-" + System.currentTimeMillis();
-        gitService.commitAndPush(branchName, commitMessage);
 
         return updatedNode;
     }
 
     public Optional<ContentNode> getNodeWithLatestContent(Long nodeId) {
-        Optional<ContentNode> nodeOpt = nodeRepository.findById(nodeId);
-        if (nodeOpt.isEmpty()) {
-            return Optional.empty();
-        }
-
-        ContentNode node = nodeOpt.get();
-        versionRepository.findLatestVersionByNodeId(nodeId)
-                .ifPresent(version -> {
-                    // Assuming you have a transient field to hold the content
-                    // or you can use a DTO for this purpose
-                    node.setMetadataJson("{\"latestContent\": \"" + version.getContent() + "\"}");
-                });
-
-        return Optional.of(node);
+        // Now, the ContentNode itself has the latest content
+        return nodeRepository.findById(nodeId);
     }
 
     @Transactional
     public void deleteNode(Long nodeId, String commitMessage) throws IOException, InterruptedException {
-        nodeRepository.deleteById(nodeId);
+        // Need to handle children if any, or ensure DB constraints do.
+        // For example, first delete components associated with this node if it's a SLIDE
+        // Then, recursively delete children or let cascade take care of it if configured.
+        ContentNode nodeToDelete = nodeRepository.findById(nodeId)
+                .orElseThrow(() -> new EntityNotFoundException("Node not found for deletion: " + nodeId));
 
-        // Commit to Git
-        String branchName = "delete-" + System.currentTimeMillis();
-        gitService.commitAndPush(branchName, commitMessage);
+        // If it's a slide, its components should be deleted by cascade if ContentNode.slideComponents has CascadeType.ALL
+        // Or, explicitly delete them:
+        // if (nodeToDelete.getNodeType() == ContentNode.NodeType.SLIDE && nodeToDelete.getSlideComponents() != null) {
+        //    slideComponentRepository.deleteAll(nodeToDelete.getSlideComponents());
+        // }
+        // Handle children recursively or rely on database cascade.
+
+        nodeRepository.deleteById(nodeId);
     }
 
     /**

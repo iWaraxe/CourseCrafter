@@ -26,9 +26,6 @@ public interface ContentNodeRepository extends JpaRepository<ContentNode, Long> 
     @Query("SELECT cn FROM ContentNode cn WHERE cn.nodeType = :nodeType AND cn.parent.id = :parentId")
     List<ContentNode> findByNodeTypeAndParentId(ContentNode.NodeType nodeType, Long parentId);
 
-    @Query("SELECT cn FROM ContentNode cn LEFT JOIN FETCH cn.versions WHERE cn.nodeType = :nodeType")
-    List<ContentNode> findByNodeTypeWithVersions(@Param("nodeType") ContentNode.NodeType nodeType);
-
     /**
      * Find all slides under a lecture (directly or through sections/topics)
      */
@@ -64,7 +61,4 @@ public interface ContentNodeRepository extends JpaRepository<ContentNode, Long> 
     Optional<ContentNode> findNextSlide(
             @Param("currentOrder") Integer currentOrder,
             @Param("parentId") Long parentId);
-
-    @Query("SELECT n FROM ContentNode n LEFT JOIN FETCH n.versions WHERE n.nodeType = 'SLIDE'")
-    List<ContentNode> findSlidesWithVersions();
 }
