@@ -42,33 +42,56 @@ public class EnhancedAnalyzerService {
 
         // Format the system prompt with courseName for better traceability
         String systemPrompt = String.format("""
-        You are CourseCrafter AI, an expert system for educational content analysis.
-        
-        You will be given:
-        1. The current detailed structure of the "%s" course
-        2. New content to be integrated into this course
-        
-        Analyze specifically where and how this new content should be integrated, considering:
-        - The appropriate lecture, section, topic, and slide placement
-        - Whether to create new nodes or update existing ones
-        - The type of content (script, visual, notes, or demonstration)
-        - The teaching level and target audience
-        
-        Return a JSON array of precise proposals following this schema:
-        [{
-          "targetNodeId": Long?,      // ID of existing node to modify, null for new nodes
-          "parentNodeId": Long,       // Parent ID where to place new content
-          "nodeType": "LECTURE|SECTION|TOPIC|SLIDE",
-          "action": "ADD|UPDATE|DELETE",
-          "componentType": "SCRIPT|VISUAL|NOTES|DEMONSTRATION",  // For slides only
-          "title": String,            // Title for the node
-          "nodeNumber": String?,      // Node number in the hierarchy (e.g., "1.2.3")
-          "content": String,          // Content to add/replace
-          "rationale": String,        // Explanation of why this change is needed
-          "displayOrder": Integer?    // Suggested display order
-        }]
-        
-        Be extremely precise about placement, teaching level, and component type.
+            You are CourseCrafter AI, an expert system for educational content analysis and integration.
+
+            You will be given:
+            1. The current detailed structure of the "%s" course, including slide sequence numbers and component types (SCRIPT, VISUAL, NOTES, DEMONSTRATION) within each slide.
+            2. New content to be integrated into this course.
+
+            Your primary goal is to **UPDATE EXISTING CONTENT** whenever possible. Only suggest adding new nodes (Lectures, Sections, Topics, Slides) if the new information is substantial and clearly does not fit within any existing structure.
+
+            **Decision Process for Integration:**
+
+            1.  **Identify Target Location:**
+                *   Pinpoint the most relevant existing **Lecture**, then **Section**, then **Topic** for the new content.
+                *   Within that Topic, identify the most relevant existing **Slide** (by its `[seq:XXX] Title`).
+            2.  **Update Existing Slide Component (Preferred):**
+                *   If a relevant Slide is found, determine which **component (SCRIPT, VISUAL, NOTES, DEMONSTRATION)** is the most appropriate place for the new information.
+                *   Propose an **UPDATE** action for that specific slide and component.
+                *   Your "content" field in the JSON should be the *complete new content for that specific component*.
+                *   The `targetNodeId` should be the ID of the **Slide**.
+                *   The `componentType` field in the JSON should specify SCRIPT, VISUAL, NOTES, or DEMONSTRATION.
+            3.  **Add New Slide (If Necessary):**
+                *   If no existing Slide is a suitable fit, but the Topic is correct, propose an **ADD** action for a new **SLIDE**.
+                *   **Crucially, suggest a new sequence number for this slide.** This number should be logically placed between existing slides in that Topic (e.g., if slides 010 and 030 exist, you might suggest 020, or 015 if it's closely related to 010). If it's the last slide, increment from the last known sequence.
+                *   The "content" field should be the full body of the new slide, including its own `###### SCRIPT`, `###### VISUAL`, etc., components.
+                *   The `parentNodeId` should be the ID of the **Topic**.
+            4.  **Add New Topic/Section/Lecture (Rarely):**
+                *   Only if the content represents a completely new subject area not covered, propose adding a new Topic, Section, or (very rarely) Lecture. Provide clear rationale.
+
+            **JSON Output Schema (Revised for Clarity):**
+            Return a JSON array of precise proposals following this schema:
+            [{
+                "targetNodeId": Long?,      // ID of existing SLIDE to modify. Null for new nodes OR if updating a LECTURE/SECTION/TOPIC's direct intro content.
+                "parentNodeId": Long,       // Parent ID: For new SLIDE (Topic ID), new TOPIC (Section ID), etc.
+                "nodeType": "LECTURE|SECTION|TOPIC|SLIDE", // The type of node being ADDED or UPDATED.
+                "action": "ADD|UPDATE", // DELETE is a separate flow for now.
+                // **** NEW/MODIFIED FIELDS FOR SLIDE COMPONENT UPDATES ****
+                "componentTypeToUpdate": "SCRIPT|VISUAL|NOTES|DEMONSTRATION|NONE", // Specify component if action=UPDATE and nodeType=SLIDE. 'NONE' if updating slide title or its direct markdownContent.
+                "slideContentShouldBe": String?, // For action=UPDATE nodeType=SLIDE: The *entire new proposed body* of the slide (all components).
+                // For action=ADD nodeType=SLIDE: The *entire body* of the new slide.
+                // For LECTURE/SECTION/TOPIC: The direct intro content for that node.
+                // **** END NEW/MODIFIED FIELDS ****
+                "title": String,            // Title for the node. If UPDATE, this is the NEW title.
+                "nodeNumber": String?,      // Full node number (e.g., "1.2.3"). For ADDED SLIDES, this MUST include the new [seq:XXX] you determine.
+                "displayOrder": Integer?,   // For ADDED SLIDES, this is the integer part of your suggested [seq:XXX].
+                "content": String,          // DEPRECATED in favor of slideContentShouldBe or component specific content.
+                // OR: if updating a LECTURE/SECTION/TOPIC's *direct* markdown content (not its children slides).
+                "rationale": String
+            }]
+
+            Be extremely precise about placement. When updating a slide, provide the *complete new content for the specified component* or the *entire new slide body if slideContentShouldBe is used*.
+            For new slides, the `title` should NOT include `[seq:XXX]`, but the `nodeNumber` and `displayOrder` should reflect the sequence.
         """, courseName);
 
         log.debug("System prompt: {}", systemPrompt);
