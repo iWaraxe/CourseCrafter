@@ -219,8 +219,10 @@ public class GitContentSyncService {
             case SLIDE:
                 // Format with display order as sequence number
                 contentBuilder.append("##### [seq:").append(node.getDisplayOrder() != null ?
-                                String.format("%03d", node.getDisplayOrder()) : "000").append("] ")
-                        .append(node.getTitle()).append("\n\n");
+                                String.format("%03d", ((Number)node.getDisplayOrder()).intValue()) : "ERR")
+                        .append("] ") // Use proposedNodeDetails.getDisplayOrder()
+                        .append(node.getTitle()) // This should be the clean title from proposedNodeDetails
+                        .append("\n\n");
 
                 // For SLIDES, node.getMarkdownContent() IS the body (SCRIPT, VISUALS etc.)
                 // as proposed by the AI.

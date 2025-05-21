@@ -169,7 +169,9 @@ public class ContentHierarchyService {
                     List<ContentNode> slides = nodeRepository.findByParentIdOrderByDisplayOrder(topic.getId());
 
                     for (ContentNode slide : slides) {
-                        builder.append("##### Slide ").append(slide.getNodeNumber()).append(": ").append(slide.getTitle()).append("\n\n");
+                        builder.append("##### Slide ").append(slide.getNodeNumber())
+                                .append(" (ID: ").append(slide.getId()).append(")")
+                                .append(": ").append(slide.getTitle()).append("\n\n");
 
                         // Only list component types, without trying to access content
                         try {
@@ -258,7 +260,9 @@ public class ContentHierarchyService {
                     List<ContentNode> slides = nodeRepository.findByParentIdOrderByDisplayOrder(topic.getId());
 
                     for (ContentNode slide : slides) {
-                        builder.append("##### Slide ").append(slide.getNodeNumber()).append(": ").append(slide.getTitle()).append("\n\n");
+                        builder.append("##### Slide ").append(slide.getNodeNumber())
+                                .append(" (ID: ").append(slide.getId()).append(")")
+                                .append(": ").append(slide.getTitle()).append("\n\n");
 
                         // For the detailed outline, we don't include component content
                         // Just list that the slide exists, without trying to access components
@@ -271,7 +275,7 @@ public class ContentHierarchyService {
     }
 
     @Transactional(readOnly = true)
-    private ContentNodeDto convertToDto(ContentNode node, boolean includeChildren) {
+    ContentNodeDto convertToDto(ContentNode node, boolean includeChildren) {
         ContentNodeDto dto = new ContentNodeDto(
                 node.getId(),
                 node.getNodeType().toString(),
