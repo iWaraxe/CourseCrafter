@@ -10,5 +10,7 @@ public record AiProposalDto(
         String nodeNumber,
         String content,
         String rationale,
-        Integer displayOrder
+        Integer displayOrder,
+        String componentTypeToUpdate,
+        String slideContentShouldBe
 ) {}

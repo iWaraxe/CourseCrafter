@@ -64,7 +64,7 @@ public class EnhancedUpdaterService {
 
 
                         // Sync the node to the Git repository - Pass the branch name here
-                        gitChanges |= gitContentSyncService.syncNodeToFile(node, branchName);
+                        gitChanges |= gitContentSyncService.syncNodeToFile(node, branchName, proposal);
 
                         // After calling syncNodeToFile
                         log.debug("Sync result: {}", gitChanges);
@@ -76,7 +76,7 @@ public class EnhancedUpdaterService {
                             updatedNodes.add(node);
 
                             // Sync the node to the Git repository - Pass the branch name here
-                            gitChanges |= gitContentSyncService.syncNodeToFile(node, branchName);
+                            gitChanges |= gitContentSyncService.syncNodeToFile(node, branchName, proposal);
                         }
                         break;
 
@@ -126,13 +126,11 @@ public class EnhancedUpdaterService {
         gitService.createBranch(branchName);
 
         try {
-            // Process all proposals - ONLY updating Git files, not the database
-            for (AiProposalDto proposal : proposals) {
-                // Create a transient node object (not saved to database)
-                ContentNode transientNode = createTransientNodeFromProposal(proposal);
+            for (AiProposalDto proposal : proposals) { // Iterate through the original proposals
+                ContentNode transientNode = createTransientNodeFromProposal(proposal); // This creates node with full content
 
-                // Sync the node to the Git repository without database changes
-                gitChanges |= gitContentSyncService.syncNodeToFileOnly(transientNode, branchName);
+                // Pass the original proposal to syncNodeToFileOnly
+                gitChanges |= gitContentSyncService.syncNodeToFileOnly(transientNode, branchName, proposal);
             }
 
             // Store the proposals in our pending table
@@ -189,6 +187,13 @@ public class EnhancedUpdaterService {
             parentNode.setId(proposal.parentNodeId());
         }
 
+        String mdContent = null;
+        if ("SLIDE".equalsIgnoreCase(proposal.nodeType())) {
+            mdContent = proposal.slideContentShouldBe();
+        } else {
+            mdContent = proposal.content(); // For LECTURE, SECTION, TOPIC
+        }
+
         return ContentNode.builder()
                 .parent(parentNode)
                 .nodeType(ContentNode.NodeType.valueOf(proposal.nodeType()))
@@ -198,6 +203,7 @@ public class EnhancedUpdaterService {
                 .markdownContent(proposal.content()) // Store the AI's proposed content here
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
+                .markdownContent(mdContent)
                 .build();
     }
 
@@ -280,21 +286,36 @@ public class EnhancedUpdaterService {
                     .append(proposal.title()).append("\n\n");
 
             sb.append("**Node Type:** ").append(proposal.nodeType()).append("\n");
+            if (proposal.targetNodeId() != null) {
+                sb.append("**Target Node ID:** ").append(proposal.targetNodeId()).append("\n");
+            }
+            if (proposal.parentNodeId() != null) {
+                sb.append("**Parent Node ID:** ").append(proposal.parentNodeId()).append("\n");
+            }
             sb.append("**Rationale:** ").append(proposal.rationale()).append("\n\n");
 
             if (!"DELETE".equals(proposal.action())) {
-                // Use HTML details tag to avoid shell interpretation issues
+                String contentForPreview = null;
+                if ("SLIDE".equalsIgnoreCase(proposal.nodeType()) && proposal.slideContentShouldBe() != null) {
+                    contentForPreview = proposal.slideContentShouldBe();
+                } else if (proposal.content() != null) { // For LECTURE, SECTION, TOPIC direct content
+                    contentForPreview = proposal.content();
+                }
+
                 sb.append("<details>\n<summary>Content Preview</summary>\n\n");
-                String contentPreview = proposal.content().length() > 300
-                        ? proposal.content().substring(0, 300) + "..."
-                        : proposal.content();
-                // Use HTML code blocks instead of markdown code blocks
-                sb.append("<pre>\n").append(contentPreview).append("\n</pre>\n</details>\n\n");
+                if (contentForPreview != null && !contentForPreview.isEmpty()) {
+                    String previewText = contentForPreview.length() > 300
+                            ? contentForPreview.substring(0, 300) + "..."
+                            : contentForPreview;
+                    sb.append("<pre>\n").append(previewText).append("\n</pre>\n");
+                } else {
+                    sb.append("<pre>\nNo direct content/body provided in this proposal (might be a structural change or title update only).\n</pre>\n");
+                }
+                sb.append("</details>\n\n");
             }
         }
 
         sb.append("Please review these changes and provide feedback.");
-
         return sb.toString();
     }
 }

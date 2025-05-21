@@ -1,8 +1,9 @@
 package com.coherentsolutions.coursecrafter.infrastructure.git;
 
 import com.coherentsolutions.coursecrafter.domain.content.model.ContentNode;
-import com.coherentsolutions.coursecrafter.domain.slide.model.SlideComponent;
+import com.coherentsolutions.coursecrafter.domain.content.repository.ContentNodeRepository;
 import com.coherentsolutions.coursecrafter.domain.slide.repository.SlideComponentRepository;
+import com.coherentsolutions.coursecrafter.presentation.dto.ai.AiProposalDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -22,6 +23,7 @@ import java.util.regex.Pattern;
 public class GitContentSyncService {
 
     private final SlideComponentRepository slideComponentRepository;
+    private final ContentNodeRepository nodeRepository;
 
     @Value("${git.repo.root}")
     private String repoRoot;
@@ -40,7 +42,7 @@ public class GitContentSyncService {
      * @param branchName The Git branch to use (if null, a new branch will be created)
      * @return true if the file was successfully updated, false otherwise
      */
-    public boolean syncNodeToFile(ContentNode node, String branchName) {
+    public boolean syncNodeToFile(ContentNode node, String branchName, AiProposalDto originalProposal) {
         try {
             // Determine which lecture file this content belongs to
             Path targetFile = determineTargetFile(node);
@@ -77,7 +79,7 @@ public class GitContentSyncService {
             }
 
             // Insert the content at the appropriate location
-            String updatedContent = insertContentAtAppropriateLocation(fileContent, node, nodeContent);
+            String updatedContent = insertContentAtAppropriateLocation(fileContent, node, nodeContent, originalProposal);
 
             // Write the updated content back to the file
             Files.writeString(targetFile, updatedContent);
@@ -93,38 +95,19 @@ public class GitContentSyncService {
     /**
      * Synchronize a transient node with the Git repository without database interaction
      */
-    public boolean syncNodeToFileOnly(ContentNode transientNode, String branchName) {
+    public boolean syncNodeToFileOnly(ContentNode transientNode, String branchName, AiProposalDto originalProposal) { // Added AiProposalDto
         try {
-            // Determine which lecture file this content belongs to
-            Path targetFile = determineTargetFile(transientNode);
-            if (targetFile == null) {
-                log.error("Could not determine target file for node: {}", transientNode.getTitle());
-                return false;
-            }
-
-            // Ensure the file exists
-            if (!Files.exists(targetFile)) {
-                log.error("Target file does not exist: {}", targetFile);
-                return false;
-            }
-
-            // Read the current file content
+            Path targetFile = determineTargetFile(transientNode); // Uses transientNode
+            // ... (null checks, file existence checks) ...
             String fileContent = Files.readString(targetFile);
+            String nodeContent = generateNodeContent(transientNode); // Uses transientNode
+            // ... (null checks for nodeContent) ...
 
-            // Generate content from the transient node
-            String nodeContent = generateNodeContent(transientNode);
-            if (nodeContent == null || nodeContent.isBlank()) {
-                log.error("Failed to generate content for node: {}", transientNode.getTitle());
-                return false;
-            }
+            // Pass originalProposal here
+            String updatedContent = insertContentAtAppropriateLocation(fileContent, transientNode, nodeContent, originalProposal);
 
-            // Insert the content at the appropriate location
-            String updatedContent = insertContentAtAppropriateLocation(fileContent, transientNode, nodeContent);
-
-            // Write the updated content back to the file
             Files.writeString(targetFile, updatedContent);
             log.info("Updated file {} with proposed content for {}", targetFile.getFileName(), transientNode.getTitle());
-
             return true;
         } catch (Exception e) {
             log.error("Failed to sync transient node to file: {}", e.getMessage(), e);
@@ -241,11 +224,10 @@ public class GitContentSyncService {
 
                 // For SLIDES, node.getMarkdownContent() IS the body (SCRIPT, VISUALS etc.)
                 // as proposed by the AI.
-                if (node.getMarkdownContent() != null && !node.getMarkdownContent().isBlank()) {
-                    contentBuilder.append(node.getMarkdownContent()).append("\n\n"); // Use the full proposed content
+                if (node.getMarkdownContent() != null && !node.getMarkdownContent().isBlank()) { // node.getMarkdownContent() comes from transientNode which gets it from proposal.slideContentShouldBe()
+                    contentBuilder.append(node.getMarkdownContent()).append("\n\n");
                 } else {
-                    // Fallback if the AI somehow proposed an empty content string for a slide
-                    log.warn("Proposed content for slide '{}' was empty. Adding a placeholder.", node.getTitle());
+                    log.warn("Proposed content for slide '{}' was empty. Adding a placeholder.", node.getTitle()); // THIS LINE
                     contentBuilder.append("<!-- AI Proposed an empty slide body. Please review. -->\n\n");
                 }
                 break;
@@ -266,105 +248,166 @@ public class GitContentSyncService {
     /**
      * Insert content at an appropriate location in the file based on node type and content
      */
-    private String insertContentAtAppropriateLocation(String fileContent, ContentNode node, String nodeContent) {
-        log.debug("Determining insert location for node: {} (type: {})", node.getTitle(), node.getNodeType());
+    /**
+     * Insert/Update content at an appropriate location in the file based on node type and content
+     */
+    private String insertContentAtAppropriateLocation(String existingFileContent, ContentNode proposedNodeDetails, String newContentBlockForNode, AiProposalDto originalProposal) {
+        String action = originalProposal.action();
+        Long targetNodeIdForUpdate = originalProposal.targetNodeId();
+        Long parentNodeIdForAdd = originalProposal.parentNodeId();
+        // Now you have the original proposal details!
 
-        // Simplify for debugging - instead of complex placement logic, let's use a direct approach
-        switch (node.getNodeType()) {
-            case LECTURE:
-                // For lectures, simply add after the last lecture heading
-                int lastLecturePos = fileContent.lastIndexOf("\n## ");
-                if (lastLecturePos >= 0) {
-                    // Find the end of this lecture section
-                    int endOfLecture = fileContent.indexOf("\n## ", lastLecturePos + 1);
-                    if (endOfLecture >= 0) {
-                        return fileContent.substring(0, endOfLecture) + "\n\n" + nodeContent + fileContent.substring(endOfLecture);
-                    } else {
-                        // No more lectures - add to end
-                        return fileContent + "\n\n" + nodeContent;
-                    }
-                } else {
-                    // No lectures found - add after course title
-                    int courseTitle = fileContent.indexOf("# ");
-                    if (courseTitle >= 0) {
-                        int endOfCourseTitle = fileContent.indexOf("\n", courseTitle);
-                        if (endOfCourseTitle >= 0) {
-                            return fileContent.substring(0, endOfCourseTitle + 1) + "\n" + nodeContent + fileContent.substring(endOfCourseTitle + 1);
-                        }
-                    }
-                    return fileContent + "\n\n" + nodeContent;
-                }
+        log.debug("Attempting to insert/update node: '{}' (Type: {}), Action: {}",
+                proposedNodeDetails.getTitle(), proposedNodeDetails.getNodeType(), action);
 
-            case SECTION:
-                // For sections, try to find a "### " section marker to attach to
-                if (node.getParent() != null) {
-                    // Try to find the parent lecture
-                    String parentTitle = node.getParent().getTitle();
-                    int parentPos = fileContent.indexOf("\n## " + parentTitle);
-
-                    if (parentPos >= 0) {
-                        // Found parent lecture, now find the first section after it
-                        int lectureEnd = fileContent.indexOf("\n## ", parentPos + 1);
-                        if (lectureEnd < 0) lectureEnd = fileContent.length();
-
-                        // Insert right after the parent heading
-                        int afterParentHeading = fileContent.indexOf("\n", parentPos) + 1;
-                        return fileContent.substring(0, afterParentHeading) + "\n" + nodeContent + fileContent.substring(afterParentHeading);
-                    }
-                }
-
-                // If we can't find the parent, insert after the last section
-                int lastSectionPos = fileContent.lastIndexOf("\n### ");
-                if (lastSectionPos >= 0) {
-                    int endOfSection = fileContent.indexOf("\n### ", lastSectionPos + 1);
-                    if (endOfSection >= 0) {
-                        return fileContent.substring(0, endOfSection) + "\n\n" + nodeContent + fileContent.substring(endOfSection);
-                    } else {
-                        // No more sections - look for next lecture
-                        endOfSection = fileContent.indexOf("\n## ", lastSectionPos);
-                        if (endOfSection >= 0) {
-                            return fileContent.substring(0, endOfSection) + "\n\n" + nodeContent + fileContent.substring(endOfSection);
-                        } else {
-                            // Add to end
-                            return fileContent + "\n\n" + nodeContent;
-                        }
-                    }
-                } else {
-                    // No sections at all - add after first lecture
-                    int firstLecture = fileContent.indexOf("\n## ");
-                    if (firstLecture >= 0) {
-                        int afterFirstLecture = fileContent.indexOf("\n", firstLecture + 1) + 1;
-                        return fileContent.substring(0, afterFirstLecture) + "\n" + nodeContent + fileContent.substring(afterFirstLecture);
-                    }
-                    return fileContent + "\n\n" + nodeContent;
-                }
-
-                // Add similar simplified logic for TOPIC and SLIDE
-            case TOPIC:
-            case SLIDE:
-            default:
-                // For now, add a simpler approach - just add it somewhere visible for debugging
-                // Let's put it after the first heading that matches the pattern for this node type
-                String headingPattern = "";
-                switch (node.getNodeType()) {
-                    case TOPIC: headingPattern = "\n#### "; break;
-                    case SLIDE: headingPattern = "\n##### "; break;
-                    default: headingPattern = "\n### "; break;
-                }
-
-                int lastHeadingPos = fileContent.lastIndexOf(headingPattern);
-                if (lastHeadingPos >= 0) {
-                    int endOfHeading = fileContent.indexOf("\n", lastHeadingPos + 1);
-                    if (endOfHeading >= 0) {
-                        return fileContent.substring(0, endOfHeading + 1) + "\n" + nodeContent + fileContent.substring(endOfHeading + 1);
-                    }
-                }
-
-                // Add debugging marker to see where it's being inserted
-                log.warn("Using fallback insertion for node: {} (type: {})", node.getTitle(), node.getNodeType());
-                nodeContent = "\n\n<!-- DEBUG: Content placement for " + node.getNodeType() + ": " + node.getTitle() + " -->\n" + nodeContent;
-
-                return fileContent + nodeContent;
+        if ("UPDATE".equalsIgnoreCase(action) && targetNodeIdForUpdate != null) {
+            return handleUpdateAction(existingFileContent, targetNodeIdForUpdate, proposedNodeDetails, newContentBlockForNode, originalProposal);
+        } else if ("ADD".equalsIgnoreCase(action) && parentNodeIdForAdd != null) {
+            return handleAddAction(existingFileContent, parentNodeIdForAdd, proposedNodeDetails, newContentBlockForNode, originalProposal);
+        } else {
+            // ... (fallback logic) ...
+            log.warn("Unsupported action or missing IDs for intelligent placement. Action: {}, TargetID: {}, ParentID: {}. Appending to end as fallback.",
+                    action, targetNodeIdForUpdate, parentNodeIdForAdd);
+            return existingFileContent + "\n\n" + "<!-- FALLBACK APPENDED CONTENT FOR TITLE: " + proposedNodeDetails.getTitle() + " -->\n" + newContentBlockForNode + "\n<!-- END FALLBACK -->\n\n";
         }
+    }
+
+    // We will implement handleUpdateAction and handleAddAction in subsequent steps.
+    // Stubs for now:
+    private String handleUpdateAction(String existingFileContent,
+                                      Long targetNodeIdInDb,
+                                      ContentNode proposedNodeDetails,
+                                      String newFullMarkdownBlockForNode,
+                                      AiProposalDto originalProposal) {
+
+        if (targetNodeIdInDb == null) {
+            log.error("UPDATE_ACTION_ERROR: TargetNodeId is null. Proposal title: {}", originalProposal.title());
+            return fallbackAppend(existingFileContent, newFullMarkdownBlockForNode, "UPDATE_NULL_TARGET_ID_FOR_" + originalProposal.title());
+        }
+
+        ContentNode currentNodeInDb = nodeRepository.findById(targetNodeIdInDb).orElse(null);
+
+        if (currentNodeInDb == null) {
+            log.error("UPDATE_ACTION_ERROR: Cannot find existing node in DB with ID: {}. Proposal title: {}",
+                    targetNodeIdInDb, originalProposal.title());
+            return fallbackAppend(existingFileContent, newFullMarkdownBlockForNode, "UPDATE_DB_NODE_NOT_FOUND_FOR_" + originalProposal.title());
+        }
+
+        log.info("--------------------------------------------------------------------");
+        log.info("HANDLE_UPDATE_ACTION for DB Node ID: {}, Current DB Title: '{}', Type: {}",
+                currentNodeInDb.getId(), currentNodeInDb.getTitle(), currentNodeInDb.getNodeType());
+        log.debug("Original AI Proposal had action: {}, title: '{}', targetNodeId: {}",
+                originalProposal.action(), originalProposal.title(), originalProposal.targetNodeId());
+        log.debug("Proposed transient node details: Title: '{}', DispOrder: {}, NodeType: {}",
+                proposedNodeDetails.getTitle(), proposedNodeDetails.getDisplayOrder(), proposedNodeDetails.getNodeType());
+        log.debug("New full Markdown block to insert/replace (first 100): '{}'",
+                newFullMarkdownBlockForNode.substring(0, Math.min(100, newFullMarkdownBlockForNode.length())).replace("\n", "\\n"));
+        log.info("--------------------------------------------------------------------");
+
+
+        ContentNode.NodeType nodeTypeToUpdate = currentNodeInDb.getNodeType();
+        String oldHeaderRegexString;
+        String blockEndLookaheadRegex = "(?=\\n(?:##|###|####|#####)\\s|$)";
+
+        // Titles from DB should be trimmed before quoting for regex
+        String dbTitleForRegex = currentNodeInDb.getTitle() != null ? currentNodeInDb.getTitle().trim() : "";
+
+        switch (nodeTypeToUpdate) {
+            case SLIDE:
+                if (currentNodeInDb.getDisplayOrder() == null || dbTitleForRegex.isEmpty()) {
+                    log.error("UPDATE_ACTION_ERROR: Existing slide (ID: {}) in DB is missing displayOrder or title. DB Title: '{}', DB DispOrder: {}. Cannot reliably find in Markdown.",
+                            targetNodeIdInDb, dbTitleForRegex, currentNodeInDb.getDisplayOrder());
+                    return fallbackAppend(existingFileContent, newFullMarkdownBlockForNode, "UPDATE_SLIDE_DB_DATA_MISSING_" + originalProposal.title());
+                }
+                oldHeaderRegexString = String.format(
+                        "#####\\s+\\[seq:%03d\\]\\s+%s", // Ensure displayOrder is an Integer
+                        ((Number)currentNodeInDb.getDisplayOrder()).intValue(), // Cast to Number then intValue
+                        Pattern.quote(dbTitleForRegex)
+                );
+                break;
+            case TOPIC:
+                if (dbTitleForRegex.isEmpty()) {
+                    log.error("UPDATE_ACTION_ERROR: Existing topic (ID: {}) in DB is missing title. Cannot find.", targetNodeIdInDb);
+                    return fallbackAppend(existingFileContent, newFullMarkdownBlockForNode, "UPDATE_TOPIC_DB_TITLE_MISSING_" + originalProposal.title());
+                }
+                // Regex: #### (optional "1.2.3. ")Actual Title From DB
+                oldHeaderRegexString = String.format(
+                        "####\\s+(?:[\\d\\.]+\\s+)?%s",
+                        Pattern.quote(dbTitleForRegex)
+                );
+                break;
+            // ... (cases for SECTION, LECTURE - ensure dbTitleForRegex is used)
+            case SECTION:
+                if (dbTitleForRegex.isEmpty()) { /* ... error log ... */ return fallbackAppend(existingFileContent, newFullMarkdownBlockForNode, "UPDATE_SECTION_DB_TITLE_MISSING_" + originalProposal.title());}
+                oldHeaderRegexString = String.format("###\\s+(?:[\\d\\.]+\\s+)?%s", Pattern.quote(dbTitleForRegex));
+                break;
+            case LECTURE:
+                if (dbTitleForRegex.isEmpty()) { /* ... error log ... */ return fallbackAppend(existingFileContent, newFullMarkdownBlockForNode, "UPDATE_LECTURE_DB_TITLE_MISSING_" + originalProposal.title());}
+                oldHeaderRegexString = String.format("##\\s+(?:[\\d\\.]+\\s+)?%s", Pattern.quote(dbTitleForRegex));
+                break;
+            default:
+                log.warn("UPDATE_ACTION_WARN: NodeType {} not specifically handled for regex header construction. Proposal: {}. Fallback append.",
+                        nodeTypeToUpdate, originalProposal.title());
+                return fallbackAppend(existingFileContent, newFullMarkdownBlockForNode, "UPDATE_TYPE_NOT_HANDLED_FOR_" + originalProposal.title());
+        }
+
+        log.debug("Constructed oldHeaderRegexString for finding existing block: '{}'", oldHeaderRegexString);
+
+        Pattern oldBlockPattern = Pattern.compile(
+                "(^" + oldHeaderRegexString + "\\s*$\\n?(.*?))" + blockEndLookaheadRegex,
+                Pattern.MULTILINE | Pattern.DOTALL
+        );
+
+        Matcher matcher = oldBlockPattern.matcher(existingFileContent);
+
+        // Log a snippet of the file content where we expect to find the match, for easier comparison
+        int searchStartIndex = 0;
+        if (existingFileContent.length() > 1000) { // If file is large, try to narrow down search for logging
+            // This is a rough heuristic, might need better way to find approximate region
+            int approxTitlePos = existingFileContent.indexOf(dbTitleForRegex);
+            if (approxTitlePos > 500) {
+                searchStartIndex = approxTitlePos - 500;
+            }
+        }
+        log.debug("Searching for old block in file content snippet (approx 1000 chars around expected title, or start): \n--SNIPPET START--\n{}\n--SNIPPET END--",
+                existingFileContent.substring(searchStartIndex, Math.min(searchStartIndex + 1000, existingFileContent.length())).replace("\n", "\\n"));
+
+
+        if (matcher.find()) {
+            // ... (your existing successful match logic) ...
+            String oldBlockFound = matcher.group(1);
+            log.info("SUCCESS_UPDATE: Found existing block for {} '{}'. Replacing.",
+                    nodeTypeToUpdate, currentNodeInDb.getTitle());
+            log.debug("Old block content (first 200): '{}'", oldBlockFound.substring(0, Math.min(200, oldBlockFound.length())).replace("\n", "\\n"));
+            log.debug("New block content (first 200): '{}'", newFullMarkdownBlockForNode.substring(0, Math.min(200, newFullMarkdownBlockForNode.length())).replace("\n", "\\n"));
+
+            String replacementString = newFullMarkdownBlockForNode.trim();
+            String updatedFileContent = matcher.replaceFirst(Matcher.quoteReplacement(replacementString));
+
+            if (existingFileContent.equals(updatedFileContent)) {
+                log.warn("WARN_UPDATE_NO_CHANGE: Update for {} '{}' resulted in no change to file content. Regex or content identical?", nodeTypeToUpdate, currentNodeInDb.getTitle());
+            } else {
+                log.info("SUCCESS_UPDATE_CONTENT_MODIFIED: Content for {} '{}' was modified.", nodeTypeToUpdate, currentNodeInDb.getTitle());
+            }
+            return updatedFileContent;
+        } else {
+            log.warn("FAILED_UPDATE_NO_MATCH: Could not find existing block in Markdown for {} '{}' (ID: {}). Regex used for header: '{}'",
+                    nodeTypeToUpdate, currentNodeInDb.getTitle(), targetNodeIdInDb, oldHeaderRegexString);
+            // Log more details about the file and target
+            if (nodeTypeToUpdate == ContentNode.NodeType.SLIDE) {
+                log.warn("Failed Slide Details - DB Seq: {}, DB Title: '{}'", currentNodeInDb.getDisplayOrder(), currentNodeInDb.getTitle());
+            }
+            return fallbackAppend(existingFileContent, newFullMarkdownBlockForNode, "UPDATE_FAILED_FIND_OLD_BLOCK_FOR_" + originalProposal.title());
+        }
+    }
+
+    // Helper for fallback
+    private String fallbackAppend(String existingFileContent, String newContent, String reason) {
+        return existingFileContent + "\n\n" + "<!-- FALLBACK APPEND (" + reason + ") -->\n" + newContent + "\n<!-- END FALLBACK -->\n\n";
+    }
+
+    private String handleAddAction(String existingFileContent, Long parentNodeId, ContentNode proposedNodeDetails, String newContentBlockForNode, AiProposalDto originalProposal) {
+        log.warn("handleAddAction not fully implemented for Parent ID: {}. New Node Title: {}. Appending for now.", parentNodeId, proposedNodeDetails.getTitle());
+        return existingFileContent + "\n\n" + "<!-- ADD PLACEHOLDER UNDER PARENT ID " + parentNodeId + " FOR TITLE: " + proposedNodeDetails.getTitle() + " -->\n" + newContentBlockForNode + "\n<!-- END ADD PLACEHOLDER -->\n\n";
     }
 }
