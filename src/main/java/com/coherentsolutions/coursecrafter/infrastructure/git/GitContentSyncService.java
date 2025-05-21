@@ -121,44 +121,67 @@ public class GitContentSyncService {
      */
     // In GitContentSyncService.java
     private Path determineTargetFile(ContentNode nodeForPathContext, AiProposalDto originalProposal) {
-        ContentNode relevantNode = null;
+        ContentNode relevantNodeForContext = null;
         if ("UPDATE".equalsIgnoreCase(originalProposal.action()) && originalProposal.targetNodeId() != null) {
-            relevantNode = nodeRepository.findById(originalProposal.targetNodeId()).orElse(null);
+            relevantNodeForContext = nodeRepository.findById(originalProposal.targetNodeId()).orElse(null);
         } else if ("ADD".equalsIgnoreCase(originalProposal.action()) && originalProposal.parentNodeId() != null) {
-            relevantNode = nodeRepository.findById(originalProposal.parentNodeId()).orElse(null);
-        } else {
-            // Fallback to the node itself if action/IDs are unclear, though this is less reliable
-            relevantNode = nodeForPathContext;
+            relevantNodeForContext = nodeRepository.findById(originalProposal.parentNodeId()).orElse(null);
         }
 
-        if (relevantNode == null) {
-            log.error("Cannot determine context for target file. Falling back to first lecture file.");
-            return Paths.get(repoRoot, LECTURE_FILES[0]);
+        if (relevantNodeForContext == null) {
+            // If still null, try the node passed directly (e.g., from a createNode flow not via proposal)
+            relevantNodeForContext = nodeForPathContext;
+            if (relevantNodeForContext == null) {
+                log.error("Cannot determine context for target file from proposal or direct node. Falling back to first lecture file.");
+                return Paths.get(repoRoot, LECTURE_FILES[0]);
+            }
         }
 
-        ContentNode lectureNode = findLectureParent(relevantNode);
+        ContentNode lectureNode = findLectureParent(relevantNodeForContext);
 
         if (lectureNode != null && lectureNode.getTitle() != null) {
-            String lectureTitle = lectureNode.getTitle();
-            // Match lectureTitle (e.g., "Lecture 1. Introduction...") against LECTURE_FILES array
-            for (String lectureFile : LECTURE_FILES) {
-                // Normalize titles for comparison (e.g., remove "Lecture X. " prefix if needed)
-                String normalizedLectureFileTitle = lectureFile.replace(".md", "").replaceAll("^Lecture \\d+[\\.\\s-]+", "").trim();
-                String normalizedDbLectureTitle = lectureTitle.replaceAll("^Lecture \\d+[\\.\\s-]+", "").trim();
+            String dbLectureTitle = lectureNode.getTitle().trim(); // Title from DB, e.g., "Lecture 1. Introduction..."
+            log.debug("Found parent lecture: '{}' (ID: {}) for determining target file.", dbLectureTitle, lectureNode.getId());
 
-                if (normalizedLectureFileTitle.equalsIgnoreCase(normalizedDbLectureTitle) || lectureFile.contains(normalizedDbLectureTitle) || normalizedDbLectureTitle.contains(normalizedLectureFileTitle)) {
-                    log.debug("Determined target file: {} for node based on lecture: {}", lectureFile, lectureTitle);
-                    return Paths.get(repoRoot, lectureFile);
+            for (String lectureFileName : LECTURE_FILES) {
+                // More robust matching:
+                // 1. Extract number from DB lecture title: "Lecture 1..." -> "1"
+                // 2. Extract number from filename: "Lecture 1- Intro..." -> "1"
+                // 3. Compare numbers. Also check if a significant part of the title matches.
+                String dbLectureNumStr = extractLectureNumberFromTitle(dbLectureTitle);
+                String fileLectureNumStr = extractLectureNumberFromFilename(lectureFileName);
+
+                if (dbLectureNumStr != null && dbLectureNumStr.equals(fileLectureNumStr)) {
+                    log.info("Determined target file: {} for node based on lecture title match: '{}'", lectureFileName, dbLectureTitle);
+                    return Paths.get(repoRoot, lectureFileName);
                 }
             }
-            log.warn("Could not match lecture title '{}' to any known LECTURE_FILES. Falling back.", lectureTitle);
+            log.warn("Could not match DB lecture title '{}' to any known LECTURE_FILES by number. Falling back to heuristic for node: {}",
+                    dbLectureTitle, nodeForPathContext.getTitle());
         } else {
-            log.warn("Could not find parent lecture for node ID {} (Title: {}). Falling back.", relevantNode.getId(), relevantNode.getTitle());
+            log.warn("Could not find parent lecture for node ID {} (Title: {}) to determine target file. Falling back to heuristic.",
+                    relevantNodeForContext.getId(), relevantNodeForContext.getTitle());
         }
-
-        // Fallback if no match or no lecture parent
-        log.debug("Falling back to default file determination logic for node title: {}", nodeForPathContext.getTitle());
         return determineTargetFileHeuristic(nodeForPathContext); // Your old heuristic method
+    }
+
+    private String extractLectureNumberFromTitle(String title) {
+        Pattern pattern = Pattern.compile("^Lecture\\s+(\\d+)[\\.\\s-:]?", Pattern.CASE_INSENSITIVE);
+        Matcher matcher = pattern.matcher(title);
+        if (matcher.find()) {
+            return matcher.group(1);
+        }
+        return null;
+    }
+
+    private String extractLectureNumberFromFilename(String filename) {
+        // Example Filename: "Lecture 1- Introduction to AI and Current Developments.md"
+        Pattern pattern = Pattern.compile("^Lecture\\s+(\\d+)[\\-\\s\\.:].*\\.md$", Pattern.CASE_INSENSITIVE);
+        Matcher matcher = pattern.matcher(filename);
+        if (matcher.find()) {
+            return matcher.group(1);
+        }
+        return null;
     }
 
     private ContentNode findLectureParent(ContentNode node) {
@@ -329,7 +352,6 @@ public class GitContentSyncService {
     }
 
     // We will implement handleUpdateAction and handleAddAction in subsequent steps.
-    // Stubs for now:
     private String handleUpdateAction(String existingFileContent,
                                       Long targetNodeIdInDb,
                                       ContentNode proposedNodeDetails,
@@ -462,8 +484,152 @@ public class GitContentSyncService {
         return existingFileContent + "\n\n" + "<!-- FALLBACK APPEND (" + reason + ") -->\n" + newContent + "\n<!-- END FALLBACK -->\n\n";
     }
 
-    private String handleAddAction(String existingFileContent, Long parentNodeId, ContentNode proposedNodeDetails, String newContentBlockForNode, AiProposalDto originalProposal) {
-        log.warn("handleAddAction not fully implemented for Parent ID: {}. New Node Title: {}. Appending for now.", parentNodeId, proposedNodeDetails.getTitle());
-        return existingFileContent + "\n\n" + "<!-- ADD PLACEHOLDER UNDER PARENT ID " + parentNodeId + " FOR TITLE: " + proposedNodeDetails.getTitle() + " -->\n" + newContentBlockForNode + "\n<!-- END ADD PLACEHOLDER -->\n\n";
+    private String handleAddAction(String existingFileContent,
+                                   Long parentNodeIdInDb,
+                                   ContentNode proposedChildNodeDetails, // Transient node for the NEW child
+                                   String newChildMarkdownBlock,      // Full Markdown for the NEW child (e.g. "##### [seq:015] New Slide\n\nBody...")
+                                   AiProposalDto originalProposal) {   // Contains parentNodeId, and child's proposed displayOrder, nodeType, title
+
+        if (parentNodeIdInDb == null) {
+            log.error("ADD_ACTION_ERROR: ParentNodeId is null. Cannot add child '{}'. Fallback append.", proposedChildNodeDetails.getTitle());
+            return fallbackAppend(existingFileContent, newChildMarkdownBlock, "ADD_NULL_PARENT_ID_FOR_" + proposedChildNodeDetails.getTitle());
+        }
+
+        ContentNode parentNodeInDb = nodeRepository.findById(parentNodeIdInDb).orElse(null);
+        if (parentNodeInDb == null) {
+            log.error("ADD_ACTION_ERROR: Cannot find parent node in DB with ID: {}. Cannot add child '{}'. Fallback append.",
+                    parentNodeIdInDb, proposedChildNodeDetails.getTitle());
+            return fallbackAppend(existingFileContent, newChildMarkdownBlock, "ADD_PARENT_DB_NODE_NOT_FOUND_FOR_" + proposedChildNodeDetails.getTitle());
+        }
+
+        log.info("--------------------------------------------------------------------");
+        log.info("HANDLE_ADD_ACTION: Adding new {} '{}' under Parent ID: {}, Parent Title: '{}', Parent Type: {}",
+                proposedChildNodeDetails.getNodeType(), proposedChildNodeDetails.getTitle(),
+                parentNodeInDb.getId(), parentNodeInDb.getTitle(), parentNodeInDb.getNodeType());
+        log.debug("Proposed child displayOrder: {}", proposedChildNodeDetails.getDisplayOrder());
+        log.info("--------------------------------------------------------------------");
+
+        // 1. Construct Regex to find the parent node's entire block
+        String parentHeaderRegexString;
+        String parentBlockEndLookaheadRegex = "(?=\\n(?:##|###|####|#####)\\s|$)"; // End before any subsequent header or EOF
+        String childHeaderStartPattern; // To find children within the parent block
+
+        // Titles from DB should be trimmed before quoting for regex
+        String parentDbTitleForRegex = parentNodeInDb.getTitle() != null ? parentNodeInDb.getTitle().trim() : "";
+
+        switch (parentNodeInDb.getNodeType()) {
+            case TOPIC: // Assuming we are adding a SLIDE under a TOPIC
+                if (parentDbTitleForRegex.isEmpty()) { /* error log & fallback */ return fallbackAppend(existingFileContent, newChildMarkdownBlock, "ADD_PARENT_TOPIC_DB_TITLE_MISSING");}
+                parentHeaderRegexString = String.format("####\\s+(?:[\\d\\.]+\\s+)?%s", Pattern.quote(parentDbTitleForRegex));
+                childHeaderStartPattern = "^#####\\s+\\[seq:(\\d+)\\]"; // To find existing slides
+                break;
+            case SECTION: // Assuming we are adding a TOPIC under a SECTION
+                if (parentDbTitleForRegex.isEmpty()) { /* error log & fallback */ return fallbackAppend(existingFileContent, newChildMarkdownBlock, "ADD_PARENT_SECTION_DB_TITLE_MISSING");}
+                parentHeaderRegexString = String.format("###\\s+(?:[\\d\\.]+\\s+)?%s", Pattern.quote(parentDbTitleForRegex));
+                childHeaderStartPattern = "^####\\s+"; // To find existing topics
+                break;
+            // Add cases for adding SECTION under LECTURE, LECTURE under COURSE if needed
+            default:
+                log.warn("ADD_ACTION_WARN: Adding children to parent type {} not fully supported yet. Parent: '{}'. Fallback append.",
+                        parentNodeInDb.getNodeType(), parentNodeInDb.getTitle());
+                return fallbackAppend(existingFileContent, newChildMarkdownBlock, "ADD_UNSUPPORTED_PARENT_TYPE_" + parentNodeInDb.getTitle());
+        }
+
+        log.debug("Constructed parentHeaderRegexString: '{}'", parentHeaderRegexString);
+        Pattern parentBlockPattern = Pattern.compile(
+                "(^" + parentHeaderRegexString + "\\s*$\\n?(.*?))" + parentBlockEndLookaheadRegex,
+                Pattern.MULTILINE | Pattern.DOTALL
+        );
+        Matcher parentMatcher = parentBlockPattern.matcher(existingFileContent);
+
+        if (parentMatcher.find()) {
+            String fullParentBlockWithHeader = parentMatcher.group(1); // Header + Body of parent
+            String parentContentBody = parentMatcher.group(2);      // Just the body of the parent
+            int parentBlockStartIndex = parentMatcher.start(1);
+            int parentBlockEndIndex = parentMatcher.end(1);
+
+            log.info("Found parent block for '{}'. Parent content body length: {}", parentNodeInDb.getTitle(), parentContentBody.length());
+
+            // 2. Find insertion point within the parentContentBody for the new child
+            int insertionPointInParentBody = -1;
+            Integer newChildDisplayOrder = proposedChildNodeDetails.getDisplayOrder();
+
+            if (newChildDisplayOrder == null) {
+                log.warn("ADD_ACTION_WARN: New child '{}' has no displayOrder. Appending within parent.", proposedChildNodeDetails.getTitle());
+                // Append at the end of parent's body content, before any potential non-child content that the lookahead might have included
+                insertionPointInParentBody = parentContentBody.length(); // Default to end of body
+            } else {
+                Pattern childSiblingPattern = Pattern.compile(childHeaderStartPattern + ".*$", Pattern.MULTILINE);
+                Matcher siblingMatcher = childSiblingPattern.matcher(parentContentBody);
+                int lastFoundSiblingEnd = -1; // End position of the last sibling found *before* insertion point
+                boolean inserted = false;
+
+                while (siblingMatcher.find()) {
+                    lastFoundSiblingEnd = siblingMatcher.end();
+                    if (proposedChildNodeDetails.getNodeType() == ContentNode.NodeType.SLIDE) {
+                        try {
+                            int siblingSeq = Integer.parseInt(siblingMatcher.group(1)); // Group 1 is the sequence number for slides
+                            if (newChildDisplayOrder <= siblingSeq) {
+                                insertionPointInParentBody = siblingMatcher.start(); // Insert before this sibling
+                                inserted = true;
+                                break;
+                            }
+                        } catch (NumberFormatException e) {
+                            log.warn("Could not parse sequence number from sibling: {}", siblingMatcher.group(0));
+                        }
+                    } else { // For TOPIC, SECTION etc., ordering might be simpler (or based on parsing full node numbers if titles have them)
+                        // This simplified logic for non-slides just finds the first child and inserts before/after.
+                        // Needs more robust logic if multiple non-slide children need specific ordering.
+                        // For now, if it's the first child or displayOrder is low, insert at its start.
+                        // This part is very basic for non-slides.
+                        if (newChildDisplayOrder < 50) { // Arbitrary: assume low order means "at the start"
+                            insertionPointInParentBody = siblingMatcher.start();
+                            inserted = true;
+                            break;
+                        }
+                    }
+                }
+
+                if (!inserted) { // If not inserted before any sibling, append after the last found sibling or at start of body
+                    if (lastFoundSiblingEnd != -1) {
+                        insertionPointInParentBody = lastFoundSiblingEnd; // Insert after the full block of the last sibling
+                    } else {
+                        insertionPointInParentBody = 0; // No siblings found, insert at the beginning of parent's body
+                    }
+                }
+            }
+
+            // Construct the new parent body
+            StringBuilder newParentBodyBuilder = new StringBuilder(parentContentBody);
+            String contentToInsert = "\n" + newChildMarkdownBlock.trim() + "\n"; // Ensure newlines around the new block
+
+            if (insertionPointInParentBody >= 0 && insertionPointInParentBody <= newParentBodyBuilder.length()) {
+                newParentBodyBuilder.insert(insertionPointInParentBody, contentToInsert);
+            } else { // Should not happen if logic above is correct
+                log.warn("Calculated invalid insertionPointInParentBody ({}). Appending child to parent body.", insertionPointInParentBody);
+                newParentBodyBuilder.append(contentToInsert);
+            }
+
+            String newFullParentBlock = fullParentBlockWithHeader.substring(0, fullParentBlockWithHeader.length() - parentContentBody.length())
+                    + newParentBodyBuilder.toString();
+
+            // Replace the old parent block with the new parent block (which now includes the child)
+            // This uses a more robust way to reconstruct the file rather than direct replaceFirst on parentMatcher.group(0)
+            // because parentMatcher.group(0) might not be the full parent block if parentContentBody was extensive.
+            // Instead, we identified parentBlockStartIndex and parentBlockEndIndex
+
+            StringBuilder finalFileContent = new StringBuilder(existingFileContent);
+            finalFileContent.replace(parentBlockStartIndex, parentBlockEndIndex, newFullParentBlock);
+
+            log.info("SUCCESS_ADD: Prepared to add new {} '{}' into parent '{}'.",
+                    proposedChildNodeDetails.getNodeType(), proposedChildNodeDetails.getTitle(), parentNodeInDb.getTitle());
+
+            return finalFileContent.toString();
+
+        } else {
+            log.warn("FAILED_ADD_NO_PARENT_MATCH: Could not find parent block in Markdown for Parent DB ID: {}, Title: '{}'. Regex used for parent header: '{}'. Fallback append.",
+                    parentNodeIdInDb, parentNodeInDb.getTitle(), parentHeaderRegexString);
+            return fallbackAppend(existingFileContent, newChildMarkdownBlock, "ADD_FAILED_FIND_PARENT_BLOCK_FOR_" + proposedChildNodeDetails.getTitle());
+        }
     }
 }
