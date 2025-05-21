@@ -195,6 +195,7 @@ public class EnhancedUpdaterService {
                 .title(proposal.title())
                 .nodeNumber(proposal.nodeNumber())
                 .displayOrder(proposal.displayOrder() != null ? proposal.displayOrder() : 100)
+                .markdownContent(proposal.content()) // Store the AI's proposed content here
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
                 .build();

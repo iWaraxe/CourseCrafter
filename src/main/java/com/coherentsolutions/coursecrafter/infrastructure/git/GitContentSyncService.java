@@ -199,38 +199,68 @@ public class GitContentSyncService {
      * Modified to handle transient nodes that might not have slide components
      */
     private String generateNodeContent(ContentNode node) {
-        StringBuilder content = new StringBuilder();
+        StringBuilder contentBuilder = new StringBuilder();
 
         switch (node.getNodeType()) {
+            case COURSE: // Assuming courses are not typically added/updated this way, but for completeness
+                contentBuilder.append("# ").append(node.getTitle()).append("\n\n");
+                if (node.getMarkdownContent() != null && !node.getMarkdownContent().isBlank()) {
+                    contentBuilder.append(node.getMarkdownContent()).append("\n\n");
+                }
+                break;
+
             case LECTURE:
-                content.append("## ").append(node.getTitle()).append("\n\n");
+                contentBuilder.append("## ").append(node.getTitle()).append("\n\n");
+                // Append the actual content proposed for the lecture itself (e.g., intro text)
+                if (node.getMarkdownContent() != null && !node.getMarkdownContent().isBlank()) {
+                    contentBuilder.append(node.getMarkdownContent()).append("\n\n");
+                }
                 break;
 
             case SECTION:
-                content.append("### ").append(node.getTitle()).append("\n\n");
+                contentBuilder.append("### ").append(node.getTitle()).append("\n\n");
+                // Append the actual content proposed for the section itself
+                if (node.getMarkdownContent() != null && !node.getMarkdownContent().isBlank()) {
+                    contentBuilder.append(node.getMarkdownContent()).append("\n\n");
+                }
                 break;
 
             case TOPIC:
-                content.append("#### ").append(node.getTitle()).append("\n\n");
+                contentBuilder.append("#### ").append(node.getTitle()).append("\n\n");
+                // Append the actual content proposed for the topic itself
+                if (node.getMarkdownContent() != null && !node.getMarkdownContent().isBlank()) {
+                    contentBuilder.append(node.getMarkdownContent()).append("\n\n");
+                }
                 break;
 
             case SLIDE:
                 // Format with display order as sequence number
-                content.append("##### [seq:").append(node.getDisplayOrder() != null ?
+                contentBuilder.append("##### [seq:").append(node.getDisplayOrder() != null ?
                                 String.format("%03d", node.getDisplayOrder()) : "000").append("] ")
                         .append(node.getTitle()).append("\n\n");
 
-                // For transient nodes, we can't get components from the database
-                // Instead, use the node's metadata or a placeholder
-                content.append("<!-- Proposed slide content - will be populated after approval -->\n\n");
+                // For SLIDES, node.getMarkdownContent() IS the body (SCRIPT, VISUALS etc.)
+                // as proposed by the AI.
+                if (node.getMarkdownContent() != null && !node.getMarkdownContent().isBlank()) {
+                    contentBuilder.append(node.getMarkdownContent()).append("\n\n"); // Use the full proposed content
+                } else {
+                    // Fallback if the AI somehow proposed an empty content string for a slide
+                    log.warn("Proposed content for slide '{}' was empty. Adding a placeholder.", node.getTitle());
+                    contentBuilder.append("<!-- AI Proposed an empty slide body. Please review. -->\n\n");
+                }
                 break;
 
-            default:
-                log.warn("Unsupported node type: {}", node.getNodeType());
+            default: // MODULE or other types if you add them
+                log.warn("Unsupported node type for content generation in Git sync: {}", node.getNodeType());
+                // Generic fallback: Title + Content
+                contentBuilder.append("#?#?# ").append(node.getTitle()).append(" (Unknown Type: ").append(node.getNodeType()).append(")\n\n");
+                if (node.getMarkdownContent() != null && !node.getMarkdownContent().isBlank()) {
+                    contentBuilder.append(node.getMarkdownContent()).append("\n\n");
+                }
                 return null;
         }
 
-        return content.toString();
+        return contentBuilder.toString();
     }
 
     /**
