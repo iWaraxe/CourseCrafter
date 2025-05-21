@@ -188,6 +188,11 @@ public class EnhancedUpdaterService {
         }
 
         String mdContent = null;
+        String cleanTitle = proposal.title();
+        if ("SLIDE".equalsIgnoreCase(proposal.nodeType()) && proposal.title() != null) {
+            cleanTitle = proposal.title().replaceAll("^\\[seq:\\d+\\]\\s*", "").trim();
+        }
+
         if ("SLIDE".equalsIgnoreCase(proposal.nodeType())) {
             mdContent = proposal.slideContentShouldBe();
         } else {
@@ -197,7 +202,7 @@ public class EnhancedUpdaterService {
         return ContentNode.builder()
                 .parent(parentNode)
                 .nodeType(ContentNode.NodeType.valueOf(proposal.nodeType()))
-                .title(proposal.title())
+                .title(cleanTitle)
                 .nodeNumber(proposal.nodeNumber())
                 .displayOrder(proposal.displayOrder() != null ? proposal.displayOrder() : 100)
                 .markdownContent(proposal.content()) // Store the AI's proposed content here

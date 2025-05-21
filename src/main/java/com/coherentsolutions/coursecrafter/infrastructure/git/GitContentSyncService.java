@@ -45,7 +45,7 @@ public class GitContentSyncService {
     public boolean syncNodeToFile(ContentNode node, String branchName, AiProposalDto originalProposal) {
         try {
             // Determine which lecture file this content belongs to
-            Path targetFile = determineTargetFile(node);
+            Path targetFile = determineTargetFile(node, originalProposal);
 
             // After determining targetFile
             log.debug("Target file for node '{}': {}", node.getTitle(), targetFile);
@@ -97,7 +97,7 @@ public class GitContentSyncService {
      */
     public boolean syncNodeToFileOnly(ContentNode transientNode, String branchName, AiProposalDto originalProposal) { // Added AiProposalDto
         try {
-            Path targetFile = determineTargetFile(transientNode); // Uses transientNode
+            Path targetFile = determineTargetFile(transientNode, originalProposal); // Uses transientNode
             // ... (null checks, file existence checks) ...
             String fileContent = Files.readString(targetFile);
             String nodeContent = generateNodeContent(transientNode); // Uses transientNode
@@ -119,7 +119,64 @@ public class GitContentSyncService {
      * Determine which lecture file this content should be added to.
      * This uses heuristics based on the content type and title.
      */
-    private Path determineTargetFile(ContentNode node) {
+    // In GitContentSyncService.java
+    private Path determineTargetFile(ContentNode nodeForPathContext, AiProposalDto originalProposal) {
+        ContentNode relevantNode = null;
+        if ("UPDATE".equalsIgnoreCase(originalProposal.action()) && originalProposal.targetNodeId() != null) {
+            relevantNode = nodeRepository.findById(originalProposal.targetNodeId()).orElse(null);
+        } else if ("ADD".equalsIgnoreCase(originalProposal.action()) && originalProposal.parentNodeId() != null) {
+            relevantNode = nodeRepository.findById(originalProposal.parentNodeId()).orElse(null);
+        } else {
+            // Fallback to the node itself if action/IDs are unclear, though this is less reliable
+            relevantNode = nodeForPathContext;
+        }
+
+        if (relevantNode == null) {
+            log.error("Cannot determine context for target file. Falling back to first lecture file.");
+            return Paths.get(repoRoot, LECTURE_FILES[0]);
+        }
+
+        ContentNode lectureNode = findLectureParent(relevantNode);
+
+        if (lectureNode != null && lectureNode.getTitle() != null) {
+            String lectureTitle = lectureNode.getTitle();
+            // Match lectureTitle (e.g., "Lecture 1. Introduction...") against LECTURE_FILES array
+            for (String lectureFile : LECTURE_FILES) {
+                // Normalize titles for comparison (e.g., remove "Lecture X. " prefix if needed)
+                String normalizedLectureFileTitle = lectureFile.replace(".md", "").replaceAll("^Lecture \\d+[\\.\\s-]+", "").trim();
+                String normalizedDbLectureTitle = lectureTitle.replaceAll("^Lecture \\d+[\\.\\s-]+", "").trim();
+
+                if (normalizedLectureFileTitle.equalsIgnoreCase(normalizedDbLectureTitle) || lectureFile.contains(normalizedDbLectureTitle) || normalizedDbLectureTitle.contains(normalizedLectureFileTitle)) {
+                    log.debug("Determined target file: {} for node based on lecture: {}", lectureFile, lectureTitle);
+                    return Paths.get(repoRoot, lectureFile);
+                }
+            }
+            log.warn("Could not match lecture title '{}' to any known LECTURE_FILES. Falling back.", lectureTitle);
+        } else {
+            log.warn("Could not find parent lecture for node ID {} (Title: {}). Falling back.", relevantNode.getId(), relevantNode.getTitle());
+        }
+
+        // Fallback if no match or no lecture parent
+        log.debug("Falling back to default file determination logic for node title: {}", nodeForPathContext.getTitle());
+        return determineTargetFileHeuristic(nodeForPathContext); // Your old heuristic method
+    }
+
+    private ContentNode findLectureParent(ContentNode node) {
+        ContentNode current = node;
+        while (current != null) {
+            if (current.getNodeType() == ContentNode.NodeType.LECTURE) {
+                return current;
+            }
+            if (current.getParent() == null && current.getNodeType() == ContentNode.NodeType.COURSE) { // If we hit course, its children are lectures
+                return null; // Or handle differently if proposals can target course directly
+            }
+            current = current.getParent();
+        }
+        return null; // Should not happen if structure is correct and node is not course itself
+    }
+
+
+    private Path determineTargetFileHeuristic(ContentNode node) {
         // Default to the first lecture file for most content
         String fileName = LECTURE_FILES[0];
 
@@ -247,9 +304,6 @@ public class GitContentSyncService {
         return contentBuilder.toString();
     }
 
-    /**
-     * Insert content at an appropriate location in the file based on node type and content
-     */
     /**
      * Insert/Update content at an appropriate location in the file based on node type and content
      */
